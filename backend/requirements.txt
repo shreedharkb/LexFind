@@ -1,0 +1,84 @@
+# LexFind Backend – Python Dependencies
+# Python 3.11+
+
+# ── Web Framework & Server ──────────────────────────────
+fastapi==0.115.12
+uvicorn[standard]==0.34.0
+gunicorn==23.0.0
+starlette==0.46.1
+pydantic==2.8.2
+pydantic-core==2.20.1
+python-multipart==0.0.20
+
+# ── Database & ORM ──────────────────────────────────────
+sqlalchemy==2.0.36
+alembic==1.13.3
+psycopg2-binary==2.9.10
+
+# ── Authentication ──────────────────────────────────────
+python-jose[cryptography]==3.3.0
+passlib[bcrypt]==1.7.4
+bcrypt==4.1.2
+pydantic[email]==2.8.2
+
+# ── ML / NLP – Embeddings ──────────────────────────────
+sentence-transformers==4.1.0
+transformers==4.49.0
+torch==2.6.0
+tokenizers==0.21.1
+huggingface-hub==0.29.3
+safetensors==0.5.3
+
+# ── Vector Search ───────────────────────────────────────
+faiss-cpu==1.10.0
+numpy==1.26.4
+pgvector==0.3.6
+
+# ── PDF Processing ──────────────────────────────────────
+PyMuPDF==1.24.13
+
+# ── HTTP Clients ────────────────────────────────────────
+httpx==0.27.0
+requests==2.32.3
+aiohttp==3.10.5
+
+# ── LangChain Ecosystem ────────────────────────────────
+langchain==0.3.21
+langchain-community==0.3.20
+langchain-core==0.3.49
+langchain-text-splitters==0.3.7
+langchain-huggingface==0.1.2
+langsmith==0.3.19
+
+# ── LangGraph (Agent Orchestration) ────────────────────
+langgraph>=0.2.0
+langchain-groq>=0.1.0
+
+# ── Groq LLM Client ────────────────────────────────────
+groq==0.15.0
+
+# ── Qdrant Vector DB ───────────────────────────────────
+# fastembed extra enables BM25 sparse vectors for hybrid search
+qdrant-client[fastembed]>=1.9.0
+fastembed>=0.3.0
+
+# ── Celery + RabbitMQ ───────────────────────────────────
+celery==5.4.0
+pika==1.3.2
+kombu==5.3.7
+gevent
+
+# ── Azure Cloud ────────────────────────────────────────
+azure-storage-blob==12.19.0
+azure-identity==1.15.0
+
+# ── Utilities ───────────────────────────────────────────
+python-dotenv==1.1.0
+tqdm==4.66.5
+typing-extensions>=4.12.0
+ftfy>=6.1.1           # fix encoding issues in old PDFs
+langdetect>=1.0.9     # language detection for corpus filtering
+nltk>=3.8.1           # sentence tokenisation
+
+# ── Testing ─────────────────────────────────────────────
+pytest==8.3.4
