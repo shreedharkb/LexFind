@@ -1,0 +1,136 @@
+# ============================================================
+# LexFind – Docker Compose Stack
+# Author: Shreedhar K B
+#
+# Commands:
+#   docker compose up -d                    → start everything
+#   docker compose down                     → stop all
+#   docker compose logs -f api              → tail API logs
+#   docker compose pull && docker compose up -d --build  → redeploy
+# ============================================================
+
+version: "3.9"
+
+networks:
+  lexfind_net:
+    driver: bridge
+
+volumes:
+  lexfind_pg_data:
+  lexfind_rabbitmq_data:
+  lexfind_tmp_uploads:
+  lexfind_qdrant_data:
+
+services:
+
+  # ── Qdrant Vector DB ────────────────────────────────────
+  qdrant:
+    image: qdrant/qdrant:latest
+    container_name: lexfind_qdrant
+    restart: always
+    ports:
+      - "6333:6333"
+    volumes:
+      - lexfind_qdrant_data:/qdrant/storage
+    networks:
+      - lexfind_net
+
+  # ── PostgreSQL + pgvector ────────────────────────────────
+  db:
+    image: pgvector/pgvector:pg17
+    container_name: lexfind_db
+    restart: always
+    ports:
+      - "5433:5432"           # host 5433 to avoid clashing with local Postgres
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: lexfind
+    volumes:
+      - lexfind_pg_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    networks:
+      - lexfind_net
+
+  # ── RabbitMQ Broker ──────────────────────────────────────
+  rabbitmq:
+    image: rabbitmq:3-management
+    container_name: lexfind_rabbitmq
+    restart: always
+    ports:
+      - "5672:5672"           # AMQP
+      - "15672:15672"         # Management UI → http://localhost:15672
+    environment:
+      RABBITMQ_DEFAULT_USER: guest
+      RABBITMQ_DEFAULT_PASS: guest
+    volumes:
+      - lexfind_rabbitmq_data:/var/lib/rabbitmq
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "ping"]
+      interval: 20s
+      timeout: 10s
+      retries: 5
+      start_period: 30s
+    networks:
+      - lexfind_net
+
+  # ── FastAPI Backend ──────────────────────────────────────
+  api:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: lexfind_api
+    restart: always
+    ports:
+      - "127.0.0.1:8000:8000"    # bind to localhost only; nginx proxies externally
+    env_file:
+      - ./backend/.env
+    volumes:
+      - ./backend/data:/app/data
+      - lexfind_tmp_uploads:/tmp/confidential_uploads
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/api/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 90s
+    networks:
+      - lexfind_net
+
+  # ── Celery Worker ────────────────────────────────────────
+  celery_worker:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: lexfind_celery
+    restart: always
+    command: >
+      celery -A workers.celery_app worker
+      --loglevel=info
+      --concurrency=2
+      --prefetch-multiplier=1
+      -P prefork
+      -Q lexfind_documents
+    env_file:
+      - ./backend/.env
+    volumes:
+      - ./backend/data:/app/data
+      - lexfind_tmp_uploads:/tmp/confidential_uploads
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "celery", "-A", "workers.celery_app", "inspect", "ping"]
+      interval: 30s
+      timeout: 15s
+      retries: 3
+      start_period: 120s
+    networks:
+      - lexfind_net
