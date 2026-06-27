@@ -1,0 +1,123 @@
+# ============================================================
+# LexFind – Git Ignore Rules
+# Author: Shreedhar K B
+# ============================================================
+
+# ── Python ──────────────────────────────────────────────────
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.tox/
+
+# Virtual environments
+.venv/
+venv/
+env/
+backend/.venv/
+backend/venv/
+backend/env/
+
+# Data & model artifacts
+backend/data/
+*.index
+*.model
+*.bin
+*.safetensors
+
+# ── Node.js / Frontend ─────────────────────────────────────
+frontend/node_modules/
+frontend/dist/
+frontend/dist-ssr/
+frontend/.vite/
+frontend/.eslintcache
+
+# ── Environment & Secrets ──────────────────────────────────
+.env
+.env.*
+!.env.example
+backend/.env
+backend/.env.*
+!backend/.env.example
+frontend/.env
+frontend/.env.*
+!frontend/.env.example
+*.pem
+
+# ── Logs ────────────────────────────────────────────────────
+logs/
+*.log
+npm-debug.log*
+yarn-debug.log*
+pnpm-debug.log*
+
+# ── Editor & IDE ────────────────────────────────────────────
+.vscode/*
+!.vscode/extensions.json
+.idea/
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+
+# ── OS Artifacts ────────────────────────────────────────────
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# ── Temp Files ──────────────────────────────────────────────
+*.tmp
+*.temp
+.temp/
+.tmp/
+*.local
+
+# ── Test Coverage ───────────────────────────────────────────
+coverage/
+*.cover
+.coverage
+.coverage.*
+coverage.xml
+pytest.xml
+htmlcov/
+
+# ── Jupyter ─────────────────────────────────────────────────
+.ipynb_checkpoints/
+
+# ── HuggingFace & ML Cache ─────────────────────────────────
+.cache/
+transformers_cache/
+
+# ── Sensitive Uploads ───────────────────────────────────────
+confidential_uploads/
+private_cases/
+temp_analysis/
+
+# ── Ingestion Pipeline Artifacts ───────────────────────────
+backend/scripts/qdrant_ingestion/embeddings.npy
+backend/scripts/qdrant_ingestion/chunk_ids.json
+backend/scripts/qdrant_ingestion/*.log
+backend/scripts/qdrant_ingestion/kaggle_export/
+backend/scripts/audit/
+backend/scripts/faiss/
+backend/scripts/qdrant/
+backend/scripts/hybrid/*.json
+backend/scripts/hybrid/*.txt
+backend/scripts/faiss_ingestion/build_chunked_faiss.py
+backend/scripts/faiss_ingestion/chunked_build_report.json
+
+# ── Misc ────────────────────────────────────────────────────
+docs/temp/
+docs/audits/
+uvicorn
+agents.md
+claude.md
+.kiro
