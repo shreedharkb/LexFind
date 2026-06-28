@@ -114,7 +114,7 @@ Infrastructure layers:
 | Component | Technology |
 |---|---|
 | Frontend | React 18, Vite, TailwindCSS |
-| Backend | FastAPI, Python 3.9+, SQLAlchemy, Alembic |
+| Backend | FastAPI, Python 3.11+, SQLAlchemy, Alembic |
 | Agent Orchestration | LangGraph, LangChain |
 | Task Queue | Celery, RabbitMQ |
 | Database | PostgreSQL 17, pgvector |
@@ -171,7 +171,7 @@ LexFind/
 
 ### Prerequisites
 
-- Python 3.9+
+- Python 3.11+
 - Node.js 18+
 - Docker and Docker Compose
 - Groq API key from console.groq.com
@@ -181,7 +181,7 @@ LexFind/
 
 ```bash
 # 1. Start infrastructure
-docker compose up db rabbitmq -d
+docker compose up db rabbitmq qdrant -d
 
 # 2. Set up Python environment
 cd backend
@@ -253,3 +253,11 @@ Detailed technical documentation is available in the `docs/` directory:
 - [RAG Metrics & Limitations](docs/rag_metrics.md)
 - [API Reference](docs/api_reference.md)
 - [Setup & Installation](docs/setup_and_installation.md)
+
+## Author
+
+**Shreedhar K B** — Design, development, and deployment.
+
+## License
+
+This project is for educational and research purposes.

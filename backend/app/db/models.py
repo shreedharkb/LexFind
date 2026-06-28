@@ -10,8 +10,6 @@ Relationship graph:
                                                               (N) DocumentChunk
                                                                   │
                                                               (1) DocumentEmbedding
-
-
 """
 
 import uuid

@@ -121,3 +121,4 @@ uvicorn
 agents.md
 claude.md
 .kiro
+AGENT_HANDOFF_README.md

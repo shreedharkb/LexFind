@@ -30,7 +30,6 @@ huggingface-hub==0.29.3
 safetensors==0.5.3
 
 # ── Vector Search ───────────────────────────────────────
-faiss-cpu==1.10.0
 numpy==1.26.4
 pgvector==0.3.6
 
