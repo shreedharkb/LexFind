@@ -157,6 +157,7 @@ LexFind/
 │   │   ├── services/             # Embedding, retrieval, blob storage
 │   │   ├── workers/              # Celery document processing task
 │   │   └── main.py               # App factory
+│   ├── tests/                    # Unit & integration test suites
 │   └── requirements.txt
 ├── frontend/
 │   └── src/
@@ -213,6 +214,15 @@ npm run dev
 ```
 
 Open `http://localhost:5173`.
+
+### Running Tests
+
+To run the backend test suite (including unit and integration tests for Azure Blob Storage and endpoints):
+
+```bash
+cd backend
+pytest tests/ -v
+```
 
 ## Environment Variables
 
