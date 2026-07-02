@@ -63,7 +63,18 @@ def _get_qdrant_client() -> QdrantClient:
     global _qdrant_client
     if _qdrant_client is None:
         _qdrant_client = QdrantClient(host=QDRANT_HOST, port=QDRANT_PORT, timeout=30)
+        try:
+            if not _qdrant_client.collection_exists(QDRANT_COLLECTION):
+                from qdrant_client.models import Distance, VectorParams
+                logger.info("Creating Qdrant collection '%s'", QDRANT_COLLECTION)
+                _qdrant_client.create_collection(
+                    collection_name=QDRANT_COLLECTION,
+                    vectors_config=VectorParams(size=768, distance=Distance.COSINE),
+                )
+        except Exception as exc:
+            logger.warning("Could not verify/create Qdrant collection '%s': %s", QDRANT_COLLECTION, exc)
     return _qdrant_client
+
 
 
 def _embed(text_input: str) -> List[float]:
@@ -178,20 +189,24 @@ class QdrantSearchService:
         qdrant_filter = _build_filter(court, year_min, year_max, state, case_type, section_type)
         client, limit = _get_qdrant_client(), top_k * _CHUNK_FETCH_MULTIPLIER
 
-        if search_mode == "keyword":
-            raw = client.query_points(
-                collection_name=QDRANT_COLLECTION, query=_embed_sparse(query), using="sparse",
-                query_filter=qdrant_filter, limit=limit, with_payload=True,
-            ).points
-        else:
-            raw = client.query_points(
-                collection_name=QDRANT_COLLECTION,
-                prefetch=[
-                    Prefetch(query=_embed(query), using="dense", filter=qdrant_filter, limit=limit),
-                    Prefetch(query=_embed_sparse(query), using="sparse", filter=qdrant_filter, limit=limit),
-                ],
-                query=FusionQuery(fusion=Fusion.RRF), limit=limit, with_payload=True,
-            ).points
+        try:
+            if search_mode == "keyword":
+                raw = client.query_points(
+                    collection_name=QDRANT_COLLECTION, query=_embed_sparse(query), using="sparse",
+                    query_filter=qdrant_filter, limit=limit, with_payload=True,
+                ).points
+            else:
+                raw = client.query_points(
+                    collection_name=QDRANT_COLLECTION,
+                    prefetch=[
+                        Prefetch(query=_embed(query), using="dense", filter=qdrant_filter, limit=limit),
+                        Prefetch(query=_embed_sparse(query), using="sparse", filter=qdrant_filter, limit=limit),
+                    ],
+                    query=FusionQuery(fusion=Fusion.RRF), limit=limit, with_payload=True,
+                ).points
+        except Exception as exc:
+            logger.warning("Qdrant search query failed: %s", exc)
+            raw = []
 
         results = _qdrant_hits_to_case_results(raw, db, top_k=top_k)
         return SearchResponse(query=query, total_results=len(results), results=results, search_time_ms=round((time.perf_counter() - t0) * 1000, 2))
@@ -201,11 +216,15 @@ class QdrantSearchService:
         if not (case_name := case_name.strip()):
             return SearchResponse(query=case_name, total_results=0, results=[], search_time_ms=0.0)
 
-        raw = _get_qdrant_client().query_points(
-            collection_name=QDRANT_COLLECTION, query=_embed(case_name),
-            query_filter=Filter(must=[FieldCondition(key="title", match=MatchText(text=case_name))]),
-            limit=top_k * _CHUNK_FETCH_MULTIPLIER, with_payload=True,
-        ).points
+        try:
+            raw = _get_qdrant_client().query_points(
+                collection_name=QDRANT_COLLECTION, query=_embed(case_name),
+                query_filter=Filter(must=[FieldCondition(key="title", match=MatchText(text=case_name))]),
+                limit=top_k * _CHUNK_FETCH_MULTIPLIER, with_payload=True,
+            ).points
+        except Exception as exc:
+            logger.warning("Qdrant search_by_case_name failed: %s", exc)
+            raw = []
 
         results = _qdrant_hits_to_case_results(raw, db, top_k=top_k)
         return SearchResponse(query=case_name, total_results=len(results), results=results, search_time_ms=round((time.perf_counter() - t0) * 1000, 2))
@@ -214,10 +233,13 @@ class QdrantSearchService:
         client, doc_filter = _get_qdrant_client(), Filter(must=[FieldCondition(key="document_id", match=MatchValue(value=document_id))])
         all_vectors, next_offset = [], None
 
-        while True:
-            result, next_offset = client.scroll(collection_name=QDRANT_COLLECTION, scroll_filter=doc_filter, limit=200, offset=next_offset, with_vectors=True, with_payload=False)
-            all_vectors.extend([p.vector for p in result if p.vector is not None])
-            if next_offset is None: break
+        try:
+            while True:
+                result, next_offset = client.scroll(collection_name=QDRANT_COLLECTION, scroll_filter=doc_filter, limit=200, offset=next_offset, with_vectors=True, with_payload=False)
+                all_vectors.extend([p.vector for p in result if p.vector is not None])
+                if next_offset is None: break
+        except Exception as exc:
+            logger.warning("Qdrant scroll similar cases failed: %s", exc)
 
         if not all_vectors:
             return SimilarCasesResponse(source_document_id=document_id, total_results=0, results=[])
@@ -226,7 +248,12 @@ class QdrantSearchService:
         if (norm := np.linalg.norm(centroid)) > 0:
             centroid /= norm
 
-        raw = client.query_points(collection_name=QDRANT_COLLECTION, query=centroid.tolist(), limit=(top_k + 1) * _CHUNK_FETCH_MULTIPLIER, with_payload=True).points
+        try:
+            raw = client.query_points(collection_name=QDRANT_COLLECTION, query=centroid.tolist(), limit=(top_k + 1) * _CHUNK_FETCH_MULTIPLIER, with_payload=True).points
+        except Exception as exc:
+            logger.warning("Qdrant query similar cases failed: %s", exc)
+            raw = []
+
         results = _qdrant_hits_to_case_results(raw, db, exclude_document_id=document_id, top_k=top_k)
         return SimilarCasesResponse(source_document_id=document_id, total_results=len(results), results=results)
 
@@ -242,14 +269,18 @@ class QdrantSearchService:
         question = question.strip()
         doc_filter = Filter(must=[FieldCondition(key="document_id", match=MatchValue(value=document_id))])
         
-        raw = _get_qdrant_client().query_points(
-            collection_name=QDRANT_COLLECTION,
-            prefetch=[
-                Prefetch(query=_embed(question), using="dense", filter=doc_filter, limit=top_k * 3),
-                Prefetch(query=_embed_sparse(question), using="sparse", filter=doc_filter, limit=top_k * 3),
-            ],
-            query=FusionQuery(fusion=Fusion.RRF), limit=top_k, with_payload=True,
-        ).points
+        try:
+            raw = _get_qdrant_client().query_points(
+                collection_name=QDRANT_COLLECTION,
+                prefetch=[
+                    Prefetch(query=_embed(question), using="dense", filter=doc_filter, limit=top_k * 3),
+                    Prefetch(query=_embed_sparse(question), using="sparse", filter=doc_filter, limit=top_k * 3),
+                ],
+                query=FusionQuery(fusion=Fusion.RRF), limit=top_k, with_payload=True,
+            ).points
+        except Exception as exc:
+            logger.warning("Qdrant ask failed: %s", exc)
+            raw = []
 
         chunk_ids = [(h.payload or {}).get("chunk_id", str(h.id)) for h in raw]
         text_by_chunk = _fetch_chunk_texts_batch(db, chunk_ids)
@@ -259,6 +290,7 @@ class QdrantSearchService:
             for cid, h in zip(chunk_ids, raw)
         ]
         return AskResponse(document_id=document_id, question=question, context_chunks=context_chunks, total_chunks=len(context_chunks))
+
 
 
 _service_instance: Optional[QdrantSearchService] = None
