@@ -16,7 +16,7 @@
 
 set -euo pipefail
 
-REPO_URL="https://github.com/YOUR_GITHUB_USERNAME/YOUR_REPO_NAME.git"
+REPO_URL="https://github.com/shreedharkb/LexFind.git"
 APP_DIR="/opt/LexFind"
 NGINX_CONF="/etc/nginx/sites-available/LexFind"
 
@@ -65,7 +65,7 @@ fi
 
 # ── 5. Configure Nginx ───────────────────────
 echo "[5/6] Configuring Nginx..."
-cp "$APP_DIR/nginx.conf" "$NGINX_CONF"
+cp "$APP_DIR/docs/infrastructure/nginx.conf" "$NGINX_CONF"
 ln -sf "$NGINX_CONF" /etc/nginx/sites-enabled/LexFind
 rm -f /etc/nginx/sites-enabled/default
 nginx -t && systemctl reload nginx
@@ -75,10 +75,10 @@ echo "Nginx configured and reloaded."
 echo "[6/6] Starting LexFind API container..."
 
 # Make sure .env exists
-if [ ! -f "$APP_DIR/api/.env" ]; then
+if [ ! -f "$APP_DIR/backend/.env" ]; then
     echo ""
-    echo "⚠️  WARNING: $APP_DIR/api/.env not found!"
-    echo "    Copy api/.env.example → api/.env and fill in:"
+    echo "⚠️  WARNING: $APP_DIR/backend/.env not found!"
+    echo "    Copy backend/.env.example → backend/.env and fill in:"
     echo "      GROQ_API_KEY"
     echo "      AZURE_STORAGE_CONNECTION_STRING  (if using Azure Blob)"
     echo "    Then run:  cd $APP_DIR && docker compose up -d --build"
