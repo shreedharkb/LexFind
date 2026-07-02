@@ -80,6 +80,7 @@ def create_app() -> FastAPI:
         allow_origins=[
             "http://localhost:5173",      # Vite dev
             "http://localhost:3000",      # CRA dev
+            "https://lex-find.vercel.app", # Vercel production
         ],
         allow_credentials=True,
         allow_methods=["*"],
