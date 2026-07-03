@@ -91,6 +91,7 @@ services:
       - ./backend/.env
     volumes:
       - ./backend/data:/app/data
+      - ./backend/scripts:/app/scripts
       - lexfind_tmp_uploads:/tmp/confidential_uploads
     depends_on:
       rabbitmq:
