@@ -251,10 +251,10 @@ def main():
         logger.error("DATABASE_URL is not set in .env")
         sys.exit(1)
 
-    # ── Load embeddings ────────────────────────────────────────────────────────
+    # ── Load embeddings (memory-mapped — avoids loading 3.5 GB into RAM) ─────────
     logger.info(f"Loading embeddings from {emb_path} ...")
-    embeddings = np.load(str(emb_path)).astype("float32")
-    logger.info(f"Embeddings shape: {embeddings.shape}")
+    embeddings = np.load(str(emb_path), mmap_mode="r")
+    logger.info(f"Embeddings shape: {embeddings.shape} — memory-mapped, dtype={embeddings.dtype}")
 
     logger.info(f"Loading chunk IDs from {ids_path} ...")
     with open(ids_path, "r", encoding="utf-8") as f:
@@ -301,8 +301,9 @@ def main():
     with tqdm(total=len(pending_indices), desc="Upserting to Qdrant", unit="chunk") as pbar:
         for batch_start in range(0, len(pending_indices), UPSERT_BATCH_SIZE):
             batch_idx = pending_indices[batch_start: batch_start + UPSERT_BATCH_SIZE]
-            batch_chunk_ids  = [chunk_ids[i]   for i in batch_idx]
-            batch_embeddings = [embeddings[i]  for i in batch_idx]
+            batch_chunk_ids  = [chunk_ids[i]  for i in batch_idx]
+            # Read only this batch from disk (mmap) and cast to float32
+            batch_embeddings = np.array([embeddings[i] for i in batch_idx], dtype="float32")
 
             # Fetch metadata from Postgres for this batch
             try:
