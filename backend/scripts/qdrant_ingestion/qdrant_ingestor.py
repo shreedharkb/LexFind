@@ -57,7 +57,7 @@ QDRANT_HOST       = os.getenv("QDRANT_HOST", "localhost")
 QDRANT_PORT       = int(os.getenv("QDRANT_PORT", "6333"))
 COLLECTION_NAME   = "legal_corpus"
 VECTOR_SIZE       = 768
-UPSERT_BATCH_SIZE = 128   # Smaller batches = less chance of timeout during HNSW indexing
+UPSERT_BATCH_SIZE = 1024  # Increased from 128 for much faster ingestion on VM
 METADATA_BATCH    = 2000   # how many chunk IDs to fetch from Postgres at once
 
 DEFAULT_EMB_PATH  = BASE_DIR / "scripts" / "qdrant_ingestion" / "embeddings.npy"
