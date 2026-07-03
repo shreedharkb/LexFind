@@ -193,17 +193,25 @@ def update_chunk_point_ids(conn, chunk_point_map: dict):
     """
     if not chunk_point_map:
         return
-    rows = [
-        {"chunk_id": cid, "point_id": pid}
-        for cid, pid in chunk_point_map.items()
-    ]
+    
+    # Construct a bulk UPDATE ... FROM (VALUES ...) query
+    values_list = []
+    binds = {}
+    for i, (cid, pid) in enumerate(chunk_point_map.items()):
+        values_list.append(f"(:c{i}, :p{i})")
+        binds[f"c{i}"] = cid
+        binds[f"p{i}"] = pid
+        
+    values_sql = ", ".join(values_list)
+    
     conn.execute(
-        text("""
-            UPDATE legal_chunks
-            SET qdrant_point_id = CAST(:point_id AS uuid)
-            WHERE id = CAST(:chunk_id AS uuid)
+        text(f"""
+            UPDATE legal_chunks AS lc
+            SET qdrant_point_id = CAST(v.point_id AS uuid)
+            FROM (VALUES {values_sql}) AS v(chunk_id, point_id)
+            WHERE lc.id = CAST(v.chunk_id AS uuid)
         """),
-        rows,
+        binds,
     )
 
 
