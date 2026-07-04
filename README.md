@@ -16,7 +16,7 @@ AI-powered legal research and conversational analysis platform. Search across 46
 ## Features
 
 **Semantic Search**
-Natural language search over 46,456 pre-indexed Indian Supreme Court judgments. Queries are embedded using `sentence-transformers/all-mpnet-base-v2` and compared against a Qdrant vector database (1.1M+ vectors). Results are ranked by cosine similarity and include metadata filters for court, year, state, and case type.
+Natural language search over 46,456 pre-indexed Indian Supreme Court judgments. Queries are embedded using `sentence-transformers/all-mpnet-base-v2` and compared against a Qdrant vector database (1.1M+ vectors). Results are ranked by cosine similarity and include metadata filters for court, year, state, and case type. To guarantee stability and prevent namespace conflicts, Qdrant search is implemented via direct HTTP REST API calls (`httpx`) rather than the Python SDK.
 
 **Agentic RAG Chat**
 Every chat request flows through a LangGraph state machine that classifies intent and routes to one of three execution paths: general legal knowledge, document-specific RAG, or full corpus search. The classifier and the answer node together make exactly two LLM calls per request. Citations are built directly from Qdrant payload metadata — no LLM extraction.
@@ -67,7 +67,7 @@ flowchart TD
     end
 
     AuthRoute <--> PG
-    SearchRoute -->|"Hybrid RRF<br>Dense+Sparse"| Qdrant
+    SearchRoute -->|"Direct HTTP<br>Dense Search"| Qdrant
     SearchRoute --> PG
     CasesRoute --> PG
 
@@ -93,7 +93,7 @@ flowchart TD
 
     LangGraphAgent <-->|"LLM API Calls"| GroqLLM["Groq API<br>llama-3.3-70b-versatile"]:::llm
     LangGraphAgent <-->|"Cosine search<br>by doc_id"| PGVector
-    LangGraphAgent <-->|"Hybrid RRF /<br>Filtered Search"| Qdrant
+    LangGraphAgent <-->|"Direct HTTP<br>Dense Search"| Qdrant
 
     LangGraphAgent -->|"answer + citations"| SSE["SSE Streamer"]
     SSE -->|"text/event-stream"| React
@@ -106,8 +106,13 @@ Infrastructure layers:
 - **LangGraph** orchestrates intent classification and retrieval routing.
 - **Celery + RabbitMQ** processes document uploads asynchronously.
 - **PostgreSQL + pgvector** stores relational data and private document vectors.
-- **Qdrant** stores the 46k-case shared corpus (1.1M vectors, metadata indexed).
-- **Groq** runs `llama-3.3-70b-versatile` for LLM inference.
+- **Qdrant**: High-performance semantic search for the 46k case corpus. Queried via direct REST HTTP requests (bypassing the Python SDK) for robust unnamed-vector execution.
+- **pgvector**: Local, isolated semantic search for user-uploaded private PDFs.
+
+**Infrastructure**
+- **Nginx (Reverse Proxy)**: Terminates SSL/HTTPS (`certbot`) on the Azure VM and forwards traffic to the FastAPI uvicorn workers.
+- **Vercel**: Hosts the React frontend and handles proxy rewrites (`vercel.json`) to the secure backend domain.
+- **RabbitMQ**: Message broker for Celery document processing.
 
 ## Tech Stack
 
