@@ -215,6 +215,12 @@ class QdrantSearchService:
             return SearchResponse(query=f"ERROR: {exc}", total_results=0, results=[], search_time_ms=0.0)
 
         results = _qdrant_hits_to_case_results(raw, db, top_k=top_k)
+        
+        if not results and raw:
+            # DEBUG: if Qdrant returned points but they got filtered out, print the payload
+            payload_sample = raw[0].payload if raw else "NO_PAYLOAD"
+            return SearchResponse(query=f"DEBUG_PAYLOAD: {payload_sample}", total_results=0, results=[], search_time_ms=round((time.perf_counter() - t0) * 1000, 2))
+            
         return SearchResponse(query=query, total_results=len(results), results=results, search_time_ms=round((time.perf_counter() - t0) * 1000, 2))
 
     def search_by_case_name(self, db: Session, case_name: str, *, top_k: int = 10) -> SearchResponse:
