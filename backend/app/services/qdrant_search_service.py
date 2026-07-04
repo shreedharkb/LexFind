@@ -196,6 +196,8 @@ class QdrantSearchService:
             response = httpx.post(url, json=payload, timeout=30.0)
             response.raise_for_status()
             points_data = response.json().get("result", [])
+            if not points_data:
+                return SearchResponse(query=f"DEBUG_EMPTY: {response.text}", total_results=0, results=[], search_time_ms=0.0)
             
             raw = [
                 ScoredPoint(
