@@ -14,6 +14,7 @@ from collections import defaultdict
 from typing import Dict, List, Optional
 
 import numpy as np
+import httpx
 from qdrant_client import QdrantClient
 from qdrant_client.models import (
     FieldCondition, Filter, MatchText,
@@ -180,17 +181,34 @@ class QdrantSearchService:
         client, limit = _get_qdrant_client(), top_k * _CHUNK_FETCH_MULTIPLIER
 
         try:
-            # Collection uses a single unnamed dense vector — use client.search() for reliability
+            # Collection uses a single unnamed dense vector. 
+            # We use direct HTTP request to bypass qdrant-client library bugs.
             query_vector = _embed(query)
-            raw = client.search(
-                collection_name=QDRANT_COLLECTION,
-                query_vector=query_vector,
-                query_filter=qdrant_filter,
-                limit=limit,
-                with_payload=True,
-            )
+            payload = {
+                "vector": query_vector,
+                "limit": limit,
+                "with_payload": True
+            }
+            if qdrant_filter:
+                payload["filter"] = __import__('json').loads(qdrant_filter.json(exclude_none=True))
+                
+            url = f"http://{QDRANT_HOST}:{QDRANT_PORT}/collections/{QDRANT_COLLECTION}/points/search"
+            response = httpx.post(url, json=payload, timeout=30.0)
+            response.raise_for_status()
+            points_data = response.json().get("result", [])
+            
+            raw = [
+                ScoredPoint(
+                    id=p["id"],
+                    version=p.get("version", 0),
+                    score=p["score"],
+                    payload=p.get("payload", {})
+                ) for p in points_data
+            ]
         except Exception as exc:
             logger.exception("Qdrant search query failed: %s", exc)
+            if hasattr(exc, "response") and exc.response is not None:
+                logger.error("Raw response: %s", exc.response.text)
             raw = []
 
         results = _qdrant_hits_to_case_results(raw, db, top_k=top_k)
@@ -202,15 +220,32 @@ class QdrantSearchService:
             return SearchResponse(query=case_name, total_results=0, results=[], search_time_ms=0.0)
 
         try:
-            raw = _get_qdrant_client().search(
-                collection_name=QDRANT_COLLECTION,
-                query_vector=_embed(case_name),
-                query_filter=Filter(must=[FieldCondition(key="title", match=MatchText(text=case_name))]),
-                limit=top_k * _CHUNK_FETCH_MULTIPLIER,
-                with_payload=True,
-            )
+            query_vector = _embed(case_name)
+            qdrant_filter = Filter(must=[FieldCondition(key="title", match=MatchText(text=case_name))])
+            payload = {
+                "vector": query_vector,
+                "limit": top_k * _CHUNK_FETCH_MULTIPLIER,
+                "with_payload": True,
+                "filter": __import__('json').loads(qdrant_filter.json(exclude_none=True))
+            }
+            
+            url = f"http://{QDRANT_HOST}:{QDRANT_PORT}/collections/{QDRANT_COLLECTION}/points/search"
+            response = httpx.post(url, json=payload, timeout=30.0)
+            response.raise_for_status()
+            points_data = response.json().get("result", [])
+            
+            raw = [
+                ScoredPoint(
+                    id=p["id"],
+                    version=p.get("version", 0),
+                    score=p["score"],
+                    payload=p.get("payload", {})
+                ) for p in points_data
+            ]
         except Exception as exc:
             logger.exception("Qdrant search_by_case_name failed: %s", exc)
+            if hasattr(exc, "response") and exc.response is not None:
+                logger.error("Raw response: %s", exc.response.text)
             raw = []
 
         results = _qdrant_hits_to_case_results(raw, db, top_k=top_k)
@@ -236,9 +271,28 @@ class QdrantSearchService:
             centroid /= norm
 
         try:
-            raw = client.query_points(collection_name=QDRANT_COLLECTION, query=centroid.tolist(), limit=(top_k + 1) * _CHUNK_FETCH_MULTIPLIER, with_payload=True).points
+            payload = {
+                "vector": centroid.tolist(),
+                "limit": (top_k + 1) * _CHUNK_FETCH_MULTIPLIER,
+                "with_payload": True
+            }
+            url = f"http://{QDRANT_HOST}:{QDRANT_PORT}/collections/{QDRANT_COLLECTION}/points/search"
+            response = httpx.post(url, json=payload, timeout=30.0)
+            response.raise_for_status()
+            points_data = response.json().get("result", [])
+            
+            raw = [
+                ScoredPoint(
+                    id=p["id"],
+                    version=p.get("version", 0),
+                    score=p["score"],
+                    payload=p.get("payload", {})
+                ) for p in points_data
+            ]
         except Exception as exc:
-            logger.warning("Qdrant query similar cases failed: %s", exc)
+            logger.exception("Qdrant query similar cases failed: %s", exc)
+            if hasattr(exc, "response") and exc.response is not None:
+                logger.error("Raw response: %s", exc.response.text)
             raw = []
 
         results = _qdrant_hits_to_case_results(raw, db, exclude_document_id=document_id, top_k=top_k)
