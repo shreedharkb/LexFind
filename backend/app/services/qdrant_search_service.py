@@ -180,16 +180,17 @@ class QdrantSearchService:
         client, limit = _get_qdrant_client(), top_k * _CHUNK_FETCH_MULTIPLIER
 
         try:
-            # Collection uses a single unnamed dense vector — no sparse/hybrid support
-            raw = client.query_points(
+            # Collection uses a single unnamed dense vector — use client.search() for reliability
+            query_vector = _embed(query)
+            raw = client.search(
                 collection_name=QDRANT_COLLECTION,
-                query=_embed(query),
+                query_vector=query_vector,
                 query_filter=qdrant_filter,
                 limit=limit,
                 with_payload=True,
-            ).points
+            )
         except Exception as exc:
-            logger.warning("Qdrant search query failed: %s", exc)
+            logger.exception("Qdrant search query failed: %s", exc)
             raw = []
 
         results = _qdrant_hits_to_case_results(raw, db, top_k=top_k)
@@ -201,15 +202,15 @@ class QdrantSearchService:
             return SearchResponse(query=case_name, total_results=0, results=[], search_time_ms=0.0)
 
         try:
-            raw = _get_qdrant_client().query_points(
+            raw = _get_qdrant_client().search(
                 collection_name=QDRANT_COLLECTION,
-                query=_embed(case_name),
+                query_vector=_embed(case_name),
                 query_filter=Filter(must=[FieldCondition(key="title", match=MatchText(text=case_name))]),
                 limit=top_k * _CHUNK_FETCH_MULTIPLIER,
                 with_payload=True,
-            ).points
+            )
         except Exception as exc:
-            logger.warning("Qdrant search_by_case_name failed: %s", exc)
+            logger.exception("Qdrant search_by_case_name failed: %s", exc)
             raw = []
 
         results = _qdrant_hits_to_case_results(raw, db, top_k=top_k)
