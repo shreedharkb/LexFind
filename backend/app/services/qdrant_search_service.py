@@ -190,7 +190,7 @@ class QdrantSearchService:
                 "with_payload": True
             }
             if qdrant_filter:
-                payload["filter"] = __import__('json').loads(qdrant_filter.json(exclude_none=True))
+                payload["filter"] = qdrant_filter.model_dump(exclude_none=True) if hasattr(qdrant_filter, "model_dump") else qdrant_filter.dict(exclude_none=True)
                 
             url = f"http://{QDRANT_HOST}:{QDRANT_PORT}/collections/{QDRANT_COLLECTION}/points/search"
             response = httpx.post(url, json=payload, timeout=30.0)
@@ -209,7 +209,8 @@ class QdrantSearchService:
             logger.exception("Qdrant search query failed: %s", exc)
             if hasattr(exc, "response") and exc.response is not None:
                 logger.error("Raw response: %s", exc.response.text)
-            raw = []
+                return SearchResponse(query=f"ERROR: {exc} | {exc.response.text}", total_results=0, results=[], search_time_ms=0.0)
+            return SearchResponse(query=f"ERROR: {exc}", total_results=0, results=[], search_time_ms=0.0)
 
         results = _qdrant_hits_to_case_results(raw, db, top_k=top_k)
         return SearchResponse(query=query, total_results=len(results), results=results, search_time_ms=round((time.perf_counter() - t0) * 1000, 2))
@@ -226,7 +227,7 @@ class QdrantSearchService:
                 "vector": query_vector,
                 "limit": top_k * _CHUNK_FETCH_MULTIPLIER,
                 "with_payload": True,
-                "filter": __import__('json').loads(qdrant_filter.json(exclude_none=True))
+                "filter": qdrant_filter.model_dump(exclude_none=True) if hasattr(qdrant_filter, "model_dump") else qdrant_filter.dict(exclude_none=True)
             }
             
             url = f"http://{QDRANT_HOST}:{QDRANT_PORT}/collections/{QDRANT_COLLECTION}/points/search"
