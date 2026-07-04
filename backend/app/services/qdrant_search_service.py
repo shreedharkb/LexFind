@@ -14,11 +14,10 @@ from collections import defaultdict
 from typing import Dict, List, Optional
 
 import numpy as np
-from fastembed import SparseTextEmbedding
 from qdrant_client import QdrantClient
 from qdrant_client.models import (
-    FieldCondition, Filter, Fusion, FusionQuery, MatchText,
-    MatchValue, Prefetch, Range, ScoredPoint, SparseVector,
+    FieldCondition, Filter, MatchText,
+    MatchValue, Range, ScoredPoint,
 )
 from sentence_transformers import SentenceTransformer
 from sqlalchemy import text
@@ -39,7 +38,6 @@ EMBEDDING_MODEL: str = "sentence-transformers/all-mpnet-base-v2"
 _CHUNK_FETCH_MULTIPLIER: int = 10
 
 _embedding_model: Optional[SentenceTransformer] = None
-_bm25_model: Optional[SparseTextEmbedding] = None
 _qdrant_client: Optional[QdrantClient] = None
 
 
@@ -51,12 +49,7 @@ def _get_embedding_model() -> SentenceTransformer:
     return _embedding_model
 
 
-def _get_bm25_model() -> SparseTextEmbedding:
-    global _bm25_model
-    if _bm25_model is None:
-        logger.info("Loading BM25 sparse model...")
-        _bm25_model = SparseTextEmbedding(model_name="Qdrant/bm25")
-    return _bm25_model
+
 
 
 def _get_qdrant_client() -> QdrantClient:
@@ -83,10 +76,7 @@ def _embed(text_input: str) -> List[float]:
     return vec[0].tolist()
 
 
-def _embed_sparse(text_input: str) -> SparseVector:
-    model = _get_bm25_model()
-    result = list(model.query_embed(text_input))[0]
-    return SparseVector(indices=result.indices.tolist(), values=result.values.tolist())
+
 
 
 def _build_filter(
@@ -190,20 +180,14 @@ class QdrantSearchService:
         client, limit = _get_qdrant_client(), top_k * _CHUNK_FETCH_MULTIPLIER
 
         try:
-            if search_mode == "keyword":
-                raw = client.query_points(
-                    collection_name=QDRANT_COLLECTION, query=_embed_sparse(query), using="sparse",
-                    query_filter=qdrant_filter, limit=limit, with_payload=True,
-                ).points
-            else:
-                raw = client.query_points(
-                    collection_name=QDRANT_COLLECTION,
-                    prefetch=[
-                        Prefetch(query=_embed(query), using="dense", filter=qdrant_filter, limit=limit),
-                        Prefetch(query=_embed_sparse(query), using="sparse", filter=qdrant_filter, limit=limit),
-                    ],
-                    query=FusionQuery(fusion=Fusion.RRF), limit=limit, with_payload=True,
-                ).points
+            # Collection uses a single unnamed dense vector — no sparse/hybrid support
+            raw = client.query_points(
+                collection_name=QDRANT_COLLECTION,
+                query=_embed(query),
+                query_filter=qdrant_filter,
+                limit=limit,
+                with_payload=True,
+            ).points
         except Exception as exc:
             logger.warning("Qdrant search query failed: %s", exc)
             raw = []
@@ -218,9 +202,11 @@ class QdrantSearchService:
 
         try:
             raw = _get_qdrant_client().query_points(
-                collection_name=QDRANT_COLLECTION, query=_embed(case_name),
+                collection_name=QDRANT_COLLECTION,
+                query=_embed(case_name),
                 query_filter=Filter(must=[FieldCondition(key="title", match=MatchText(text=case_name))]),
-                limit=top_k * _CHUNK_FETCH_MULTIPLIER, with_payload=True,
+                limit=top_k * _CHUNK_FETCH_MULTIPLIER,
+                with_payload=True,
             ).points
         except Exception as exc:
             logger.warning("Qdrant search_by_case_name failed: %s", exc)
