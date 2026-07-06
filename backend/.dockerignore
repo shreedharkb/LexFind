@@ -1,0 +1,31 @@
+# ── Large data files — never needed in Docker image ───────────────────────
+scripts/qdrant_ingestion/embeddings.npy
+scripts/qdrant_ingestion/chunk_ids.json
+scripts/qdrant_ingestion/kaggle_export/
+scripts/faiss_ingestion/
+data/pdfs/
+*.sql
+*.dump
+*.npy
+
+# ── Python cache ──────────────────────────────────────────────────────────
+__pycache__/
+**/__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+
+# ── Virtual environments ───────────────────────────────────────────────────
+venv/
+.venv/
+env/
+
+# ── Dev / test artifacts ───────────────────────────────────────────────────
+tests/
+.pytest_cache/
+*.log
+
+# ── Local env overrides ────────────────────────────────────────────────────
+.env
+.env.example
