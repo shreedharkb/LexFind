@@ -7,7 +7,7 @@ This wrapper provides backward compatibility for legacy v1 endpoints (like cases
 
 import logging
 from typing import Any, Dict, List
-from app.services.qdrant_search_service import get_search_service, _get_qdrant_client, QDRANT_COLLECTION
+from app.services.qdrant_search_service import get_search_service, _get_qdrant_client, QDRANT_COLLECTION  # noqa: F401
 
 logger = logging.getLogger(__name__)
 
