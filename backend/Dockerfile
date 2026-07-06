@@ -25,8 +25,14 @@ WORKDIR /app
 
 # Install Python deps first (maximise Docker layer cache)
 COPY requirements.txt .
+# Install CPU-only PyTorch FIRST — the CUDA variant pulls 2.5 GB of NVIDIA
+# libs that are useless on a CPU-only VM.  sentence-transformers runs fine on CPU.
 RUN pip install --upgrade pip && \
-    pip install -r requirements.txt
+    pip install torch==2.6.0+cpu \
+        --index-url https://download.pytorch.org/whl/cpu \
+        --no-cache-dir && \
+    grep -v "^torch" requirements.txt > /tmp/requirements_no_torch.txt && \
+    pip install -r /tmp/requirements_no_torch.txt --no-cache-dir
 
 # Copy the rest of the application
 COPY . .
