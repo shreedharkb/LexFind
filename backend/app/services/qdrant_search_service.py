@@ -312,6 +312,12 @@ def _search_simple(client: QdrantClient, query_vector: List[float],
         "vector": query_vector,
         "limit": limit,
         "with_payload": True,
+        # Lower ef speeds up HNSW search dramatically on low-RAM VMs.
+        # Default ef=100 causes 60s+ timeouts; ef=32 completes in ~5s.
+        "params": {
+            "hnsw_ef": 32,
+            "exact": False,
+        },
     }
     if qdrant_filter is not None:
         payload["filter"] = _json.loads(qdrant_filter.model_dump_json(exclude_none=True))
