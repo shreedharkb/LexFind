@@ -3,11 +3,13 @@ LexFind — Qdrant Search Service
 ==================================
 Core search layer using Qdrant.
 
-Supports both collection formats:
-  - Legacy: single unnamed dense vector (768-dim COSINE)
-  - Hybrid: named "dense" + "sparse" vectors with RRF fusion
+Uses hybrid search with named vectors:
+  - "dense" vector (768-dim, sentence-transformers/all-mpnet-base-v2)
+  - "sparse" vector (BM25 via fastembed)
+  - RRF fusion to combine both
 
-Auto-detects the collection format at startup and routes queries accordingly.
+This matches the collection format created by the JurisFind/LexFind ingestion
+pipeline. All queries go through query_points() with Prefetch + FusionQuery.
 """
 
 from __future__ import annotations
@@ -23,10 +25,14 @@ from qdrant_client import QdrantClient
 from qdrant_client.models import (
     FieldCondition,
     Filter,
+    Fusion,
+    FusionQuery,
     MatchText,
     MatchValue,
+    Prefetch,
     Range,
     ScoredPoint,
+    SparseVector,
 )
 from sentence_transformers import SentenceTransformer
 from sqlalchemy import text
@@ -55,8 +61,7 @@ _CHUNK_FETCH_MULTIPLIER: int = 10
 
 _embedding_model: Optional[SentenceTransformer] = None
 _qdrant_client: Optional[QdrantClient] = None
-_collection_has_named_vectors: Optional[bool] = None  # Auto-detected at startup
-_bm25_model = None  # Lazy-loaded only if hybrid collection detected
+_bm25_model = None  # Lazy-loaded
 
 
 def _get_embedding_model() -> SentenceTransformer:
@@ -76,34 +81,8 @@ def _get_qdrant_client() -> QdrantClient:
     return _qdrant_client
 
 
-def _detect_collection_format() -> bool:
-    """
-    Auto-detect whether the Qdrant collection uses named vectors ("dense"/"sparse")
-    or a single unnamed vector. Returns True if named vectors exist.
-    """
-    global _collection_has_named_vectors
-    if _collection_has_named_vectors is not None:
-        return _collection_has_named_vectors
-
-    try:
-        client = _get_qdrant_client()
-        info = client.get_collection(QDRANT_COLLECTION)
-        vectors_config = info.config.params.vectors
-        if isinstance(vectors_config, dict) and "dense" in vectors_config:
-            _collection_has_named_vectors = True
-            logger.info("Qdrant collection '%s': HYBRID mode (named dense+sparse vectors)", QDRANT_COLLECTION)
-        else:
-            _collection_has_named_vectors = False
-            logger.info("Qdrant collection '%s': SIMPLE mode (single unnamed vector)", QDRANT_COLLECTION)
-    except Exception as exc:
-        logger.warning("Could not detect collection format: %s. Defaulting to simple mode.", exc)
-        _collection_has_named_vectors = False
-
-    return _collection_has_named_vectors
-
-
 def _get_bm25_model():
-    """Lazy-load the BM25 sparse model. Only needed for hybrid collections."""
+    """Lazy-load the BM25 sparse model."""
     global _bm25_model
     if _bm25_model is None:
         try:
@@ -112,12 +91,11 @@ def _get_bm25_model():
             _bm25_model = SparseTextEmbedding(model_name="Qdrant/bm25")
             logger.info("BM25 model loaded.")
         except ImportError:
-            logger.warning("fastembed not installed. Sparse search disabled.")
-            _bm25_model = False  # Sentinel to avoid re-trying
+            logger.warning("fastembed not installed — sparse/BM25 search disabled. "
+                           "Install with: pip install fastembed")
         except Exception as exc:
             logger.warning("Failed to load BM25 model: %s", exc)
-            _bm25_model = False
-    return _bm25_model if _bm25_model is not False else None
+    return _bm25_model
 
 
 # ── Internal helpers ───────────────────────────────────────────────────────────
@@ -129,18 +107,21 @@ def _embed(text_input: str) -> List[float]:
     return vec[0].tolist()
 
 
-def _embed_sparse(text_input: str):
+def _embed_sparse(text_input: str) -> Optional[SparseVector]:
     """Embed a single string into a BM25 sparse vector for Qdrant."""
     model = _get_bm25_model()
     if model is None:
         return None
-    from qdrant_client.models import SparseVector
-    result = list(model.query_embed(text_input))
-    sparse = result[0]
-    return SparseVector(
-        indices=sparse.indices.tolist(),
-        values=sparse.values.tolist(),
-    )
+    try:
+        result = list(model.query_embed(text_input))
+        sparse = result[0]
+        return SparseVector(
+            indices=sparse.indices.tolist(),
+            values=sparse.values.tolist(),
+        )
+    except Exception as exc:
+        logger.warning("BM25 sparse embedding failed: %s", exc)
+        return None
 
 
 def _build_filter(
@@ -298,59 +279,19 @@ def _qdrant_hits_to_case_results(
     return results
 
 
-# ── Search helpers (simple vs hybrid) ──────────────────────────────────────────
-
-def _search_simple(client: QdrantClient, query_vector: List[float],
-                   qdrant_filter: Optional[Filter], limit: int) -> List[ScoredPoint]:
-    """
-    Search using a single unnamed dense vector via direct HTTP POST to Qdrant REST API.
-    Uses httpx instead of qdrant-client to bypass library timeout/version bugs.
-    Proven working approach (commit d9b3252).
-    """
-    import httpx, json as _json
-    payload: dict = {
-        "vector": query_vector,
-        "limit": limit,
-        "with_payload": True,
-        # Lower ef speeds up HNSW search dramatically on low-RAM VMs.
-        # Default ef=100 causes 60s+ timeouts; ef=32 completes in ~5s.
-        "params": {
-            "hnsw_ef": 32,
-            "exact": False,
-        },
-    }
-    if qdrant_filter is not None:
-        payload["filter"] = _json.loads(qdrant_filter.model_dump_json(exclude_none=True))
-
-    url = f"http://{QDRANT_HOST}:{QDRANT_PORT}/collections/{QDRANT_COLLECTION}/points/search"
-    try:
-        response = httpx.post(url, json=payload, timeout=120.0)
-        response.raise_for_status()
-        points_data = response.json().get("result", [])
-        return [
-            ScoredPoint(
-                id=p["id"],
-                version=p.get("version", 0),
-                score=p["score"],
-                payload=p.get("payload", {}),
-                vector=None,
-            )
-            for p in points_data
-        ]
-    except Exception as exc:
-        logger.error("_search_simple HTTP POST failed: %s", exc)
-        raise
-
+# ── Hybrid search (named vectors: dense + sparse with RRF fusion) ──────────────
 
 def _search_hybrid(client: QdrantClient, query: str, query_vector: List[float],
                    qdrant_filter: Optional[Filter], limit: int) -> List[ScoredPoint]:
-    """Search using named dense+sparse vectors with RRF fusion (hybrid format)."""
-    from qdrant_client.models import Fusion, FusionQuery, Prefetch
-
-    sparse_vec = _embed_sparse(query)
+    """
+    Search using named dense+sparse vectors with RRF fusion.
+    This is the only search path — the collection always uses named vectors.
+    """
     prefetch = [
         Prefetch(query=query_vector, using="dense", filter=qdrant_filter, limit=limit),
     ]
+
+    sparse_vec = _embed_sparse(query)
     if sparse_vec is not None:
         prefetch.append(
             Prefetch(query=sparse_vec, using="sparse", filter=qdrant_filter, limit=limit),
@@ -368,15 +309,13 @@ def _search_hybrid(client: QdrantClient, query: str, query_vector: List[float],
 # ── Service class ──────────────────────────────────────────────────────────────
 
 class QdrantSearchService:
-    """Qdrant-backed search service. Auto-detects collection format."""
+    """Qdrant-backed search service using hybrid named-vector search."""
 
     def __init__(self) -> None:
         try:
             _get_embedding_model()
             _get_qdrant_client()
-            _detect_collection_format()
-            if _collection_has_named_vectors:
-                _get_bm25_model()
+            _get_bm25_model()
         except Exception as exc:
             logger.warning("Could not pre-warm search service singletons: %s", exc)
 
@@ -439,10 +378,7 @@ class QdrantSearchService:
         query_vector = _embed(query)
 
         try:
-            if _detect_collection_format():
-                raw = _search_hybrid(client, query, query_vector, qdrant_filter, limit)
-            else:
-                raw = _search_simple(client, query_vector, qdrant_filter, limit)
+            raw = _search_hybrid(client, query, query_vector, qdrant_filter, limit)
         except Exception as exc:
             logger.exception("Qdrant search failed: %s", exc)
             return SearchResponse(
@@ -465,11 +401,7 @@ class QdrantSearchService:
             query_vector = _embed(case_name)
             name_filter = Filter(must=[FieldCondition(key="title", match=MatchText(text=case_name))])
             limit = top_k * _CHUNK_FETCH_MULTIPLIER
-
-            if _detect_collection_format():
-                raw = _search_hybrid(_get_qdrant_client(), case_name, query_vector, name_filter, limit)
-            else:
-                raw = _search_simple(_get_qdrant_client(), query_vector, name_filter, limit)
+            raw = _search_hybrid(_get_qdrant_client(), case_name, query_vector, name_filter, limit)
         except Exception as exc:
             logger.exception("Qdrant search_by_case_name failed: %s", exc)
             raw = []
@@ -484,14 +416,13 @@ class QdrantSearchService:
         client = _get_qdrant_client()
         doc_filter = Filter(must=[FieldCondition(key="document_id", match=MatchValue(value=document_id))])
         all_vectors, next_offset = [], None
-        is_hybrid = _detect_collection_format()
 
         try:
             while True:
                 result, next_offset = client.scroll(
                     collection_name=QDRANT_COLLECTION,
                     scroll_filter=doc_filter, limit=200, offset=next_offset,
-                    with_vectors=["dense"] if is_hybrid else True,
+                    with_vectors=["dense"],
                     with_payload=False,
                 )
                 for p in result:
@@ -514,20 +445,12 @@ class QdrantSearchService:
 
         try:
             limit = (top_k + 1) * _CHUNK_FETCH_MULTIPLIER
-            if is_hybrid:
-                from qdrant_client.models import Prefetch, Fusion, FusionQuery
-                raw = client.query_points(
-                    collection_name=QDRANT_COLLECTION,
-                    prefetch=[Prefetch(query=centroid.tolist(), using="dense", limit=limit)],
-                    query=FusionQuery(fusion=Fusion.RRF),
-                    limit=limit, with_payload=True,
-                ).points
-            else:
-                raw = client.query_points(
-                    collection_name=QDRANT_COLLECTION,
-                    query=centroid.tolist(),
-                    limit=limit, with_payload=True,
-                ).points
+            raw = client.query_points(
+                collection_name=QDRANT_COLLECTION,
+                prefetch=[Prefetch(query=centroid.tolist(), using="dense", limit=limit)],
+                query=FusionQuery(fusion=Fusion.RRF),
+                limit=limit, with_payload=True,
+            ).points
         except Exception as exc:
             logger.exception("Qdrant query similar cases failed: %s", exc)
             raw = []
@@ -572,10 +495,7 @@ class QdrantSearchService:
 
         try:
             query_vector = _embed(question)
-            if _detect_collection_format():
-                raw = _search_hybrid(_get_qdrant_client(), question, query_vector, doc_filter, top_k)
-            else:
-                raw = _search_simple(_get_qdrant_client(), query_vector, doc_filter, top_k)
+            raw = _search_hybrid(_get_qdrant_client(), question, query_vector, doc_filter, top_k)
         except Exception as exc:
             logger.warning("Qdrant ask failed: %s", exc)
             raw = []
