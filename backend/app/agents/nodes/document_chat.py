@@ -50,15 +50,15 @@ def _search_qdrant_by_doc(db: Session, doc_id: str, question: str, query_vector:
     doc_filter = Filter(must=[FieldCondition(key="document_id", match=MatchValue(value=doc_id))])
     limit = TOP_K_QDRANT * 3
 
-    result = client.search(
+    result = client.query_points(
         collection_name=COLLECTION_NAME,
-        query_vector=query_vector,
+        query=query_vector,
         query_filter=doc_filter,
         limit=TOP_K_QDRANT,
         with_payload=True,
     )
 
-    chunk_ids = [r.payload.get("chunk_id") for r in result if r.payload.get("chunk_id")]
+    chunk_ids = [r.payload.get("chunk_id") for r in result.points if r.payload.get("chunk_id")]
     chunk_texts = {}
     if chunk_ids:
         rows = db.execute(

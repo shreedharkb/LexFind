@@ -285,15 +285,15 @@ def _search_qdrant(client: QdrantClient, query_vector: List[float],
                    qdrant_filter: Optional[Filter], limit: int) -> List[ScoredPoint]:
     """
     Search using the collection's single unnamed vector.
-    Uses client.search() which is compatible with unnamed vector collections.
+    Uses query_points() with a plain vector (no 'using' param = unnamed vector).
     """
-    return client.search(
+    return client.query_points(
         collection_name=QDRANT_COLLECTION,
-        query_vector=query_vector,
+        query=query_vector,
         query_filter=qdrant_filter,
         limit=limit,
         with_payload=True,
-    )
+    ).points
 
 
 # ── Service class ──────────────────────────────────────────────────────────────
@@ -435,11 +435,11 @@ class QdrantSearchService:
 
         try:
             limit = (top_k + 1) * _CHUNK_FETCH_MULTIPLIER
-            raw = client.search(
+            raw = client.query_points(
                 collection_name=QDRANT_COLLECTION,
-                query_vector=centroid.tolist(),
+                query=centroid.tolist(),
                 limit=limit, with_payload=True,
-            )
+            ).points
         except Exception as exc:
             logger.exception("Qdrant query similar cases failed: %s", exc)
             raw = []

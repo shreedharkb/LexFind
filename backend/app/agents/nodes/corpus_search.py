@@ -106,13 +106,13 @@ def corpus_search_node(state: LexFindState) -> LexFindState:
         dense_vec = embed(question)
         client = get_qdrant()
 
-        result = client.search(
+        result = client.query_points(
             collection_name=COLLECTION_NAME,
-            query_vector=dense_vec,
+            query=dense_vec,
             limit=SEARCH_LIMIT,
             with_payload=True,
         )
-        raw_results = result
+        raw_results = result.points
     except Exception as exc:
         logger.error("CorpusSearch Qdrant error: %s", exc)
         return {**state, "answer": "Search failed. Please try again.", "citations": [], "retrieved_chunks": [], "error": str(exc)}
