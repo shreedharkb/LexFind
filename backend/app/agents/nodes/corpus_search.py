@@ -104,25 +104,15 @@ def corpus_search_node(state: LexFindState) -> LexFindState:
 
     try:
         dense_vec = embed(question)
-        sparse_vec = _embed_sparse(question)
         client = get_qdrant()
 
-        prefetch = [
-            Prefetch(query=dense_vec, using="dense", limit=SEARCH_LIMIT * 3),
-        ]
-        if sparse_vec is not None:
-            prefetch.append(
-                Prefetch(query=sparse_vec, using="sparse", limit=SEARCH_LIMIT * 3),
-            )
-
-        result = client.query_points(
+        result = client.search(
             collection_name=COLLECTION_NAME,
-            prefetch=prefetch,
-            query=FusionQuery(fusion=Fusion.RRF),
+            query_vector=dense_vec,
             limit=SEARCH_LIMIT,
             with_payload=True,
         )
-        raw_results = result.points
+        raw_results = result
     except Exception as exc:
         logger.error("CorpusSearch Qdrant error: %s", exc)
         return {**state, "answer": "Search failed. Please try again.", "citations": [], "retrieved_chunks": [], "error": str(exc)}

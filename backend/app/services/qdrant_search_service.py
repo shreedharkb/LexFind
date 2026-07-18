@@ -279,31 +279,21 @@ def _qdrant_hits_to_case_results(
     return results
 
 
-# ── Hybrid search (named vectors: dense + sparse with RRF fusion) ──────────────
+# ── Vector search (single unnamed vector collection) ──────────────────────────
 
-def _search_hybrid(client: QdrantClient, query: str, query_vector: List[float],
+def _search_qdrant(client: QdrantClient, query_vector: List[float],
                    qdrant_filter: Optional[Filter], limit: int) -> List[ScoredPoint]:
     """
-    Search using named dense+sparse vectors with RRF fusion.
-    This is the only search path — the collection always uses named vectors.
+    Search using the collection's single unnamed vector.
+    Uses client.search() which is compatible with unnamed vector collections.
     """
-    prefetch = [
-        Prefetch(query=query_vector, using="dense", filter=qdrant_filter, limit=limit),
-    ]
-
-    sparse_vec = _embed_sparse(query)
-    if sparse_vec is not None:
-        prefetch.append(
-            Prefetch(query=sparse_vec, using="sparse", filter=qdrant_filter, limit=limit),
-        )
-
-    return client.query_points(
+    return client.search(
         collection_name=QDRANT_COLLECTION,
-        prefetch=prefetch,
-        query=FusionQuery(fusion=Fusion.RRF),
+        query_vector=query_vector,
+        query_filter=qdrant_filter,
         limit=limit,
         with_payload=True,
-    ).points
+    )
 
 
 # ── Service class ──────────────────────────────────────────────────────────────
@@ -378,7 +368,7 @@ class QdrantSearchService:
         query_vector = _embed(query)
 
         try:
-            raw = _search_hybrid(client, query, query_vector, qdrant_filter, limit)
+            raw = _search_qdrant(client, query_vector, qdrant_filter, limit)
         except Exception as exc:
             logger.exception("Qdrant search failed: %s", exc)
             return SearchResponse(
@@ -401,7 +391,7 @@ class QdrantSearchService:
             query_vector = _embed(case_name)
             name_filter = Filter(must=[FieldCondition(key="title", match=MatchText(text=case_name))])
             limit = top_k * _CHUNK_FETCH_MULTIPLIER
-            raw = _search_hybrid(_get_qdrant_client(), case_name, query_vector, name_filter, limit)
+            raw = _search_qdrant(_get_qdrant_client(), query_vector, name_filter, limit)
         except Exception as exc:
             logger.exception("Qdrant search_by_case_name failed: %s", exc)
             raw = []
@@ -422,13 +412,13 @@ class QdrantSearchService:
                 result, next_offset = client.scroll(
                     collection_name=QDRANT_COLLECTION,
                     scroll_filter=doc_filter, limit=200, offset=next_offset,
-                    with_vectors=["dense"],
+                    with_vectors=True,
                     with_payload=False,
                 )
                 for p in result:
                     vec = p.vector
                     if isinstance(vec, dict):
-                        vec = vec.get("dense")
+                        vec = vec.get("dense", list(vec.values())[0] if vec else None)
                     if vec is not None:
                         all_vectors.append(vec)
                 if next_offset is None:
@@ -445,12 +435,11 @@ class QdrantSearchService:
 
         try:
             limit = (top_k + 1) * _CHUNK_FETCH_MULTIPLIER
-            raw = client.query_points(
+            raw = client.search(
                 collection_name=QDRANT_COLLECTION,
-                prefetch=[Prefetch(query=centroid.tolist(), using="dense", limit=limit)],
-                query=FusionQuery(fusion=Fusion.RRF),
+                query_vector=centroid.tolist(),
                 limit=limit, with_payload=True,
-            ).points
+            )
         except Exception as exc:
             logger.exception("Qdrant query similar cases failed: %s", exc)
             raw = []
@@ -495,7 +484,7 @@ class QdrantSearchService:
 
         try:
             query_vector = _embed(question)
-            raw = _search_hybrid(_get_qdrant_client(), question, query_vector, doc_filter, top_k)
+            raw = _search_qdrant(_get_qdrant_client(), query_vector, doc_filter, top_k)
         except Exception as exc:
             logger.warning("Qdrant ask failed: %s", exc)
             raw = []

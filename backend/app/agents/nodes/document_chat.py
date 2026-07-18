@@ -48,26 +48,17 @@ def _clean(text: str) -> str:
 def _search_qdrant_by_doc(db: Session, doc_id: str, question: str, query_vector: list[float]) -> list[dict]:
     client = get_qdrant()
     doc_filter = Filter(must=[FieldCondition(key="document_id", match=MatchValue(value=doc_id))])
-    sparse_vec = _embed_sparse(question)
     limit = TOP_K_QDRANT * 3
 
-    prefetch = [
-        Prefetch(query=query_vector, using="dense", filter=doc_filter, limit=limit),
-    ]
-    if sparse_vec is not None:
-        prefetch.append(
-            Prefetch(query=sparse_vec, using="sparse", filter=doc_filter, limit=limit),
-        )
-
-    result = client.query_points(
+    result = client.search(
         collection_name=COLLECTION_NAME,
-        prefetch=prefetch,
-        query=FusionQuery(fusion=Fusion.RRF),
+        query_vector=query_vector,
+        query_filter=doc_filter,
         limit=TOP_K_QDRANT,
         with_payload=True,
     )
 
-    chunk_ids = [r.payload.get("chunk_id") for r in result.points if r.payload.get("chunk_id")]
+    chunk_ids = [r.payload.get("chunk_id") for r in result if r.payload.get("chunk_id")]
     chunk_texts = {}
     if chunk_ids:
         rows = db.execute(
