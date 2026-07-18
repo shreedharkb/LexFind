@@ -18,7 +18,7 @@ import logging
 from typing import Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
-from fastapi.responses import FileResponse
+from fastapi.responses import FileResponse, Response
 from sqlalchemy.orm import Session
 from sqlalchemy import text
 import os
@@ -34,6 +34,7 @@ from app.schemas.search_schemas import (
     SimilarCasesResponse,
 )
 from app.services.qdrant_search_service import QdrantSearchService, get_search_service
+from app.services.blob_storage_service import blob_storage_service, BlobStorageError
 
 logger = logging.getLogger(__name__)
 
@@ -287,11 +288,24 @@ async def serve_pdf(
         "data", "pdfs",
     )
     pdf_path = os.path.join(local_pdf_dir, safe_filename)
-    if not os.path.exists(pdf_path):
-        raise HTTPException(status_code=404, detail="PDF file not found on disk.")
 
-    return FileResponse(
-        pdf_path,
-        media_type="application/pdf",
-        content_disposition_type="inline",
-    )
+    # Try local file first
+    if os.path.exists(pdf_path):
+        return FileResponse(
+            pdf_path,
+            media_type="application/pdf",
+            content_disposition_type="inline",
+        )
+
+    # Fall back to Azure Blob Storage
+    blob_path = f"data/pdfs/{safe_filename}"
+    try:
+        pdf_bytes = blob_storage_service.download_pdf(blob_path)
+        return Response(
+            content=pdf_bytes,
+            media_type="application/pdf",
+            headers={"Content-Disposition": "inline"},
+        )
+    except (BlobStorageError, Exception) as exc:
+        logger.warning("PDF not found locally or in Azure: %s — %s", safe_filename, exc)
+        raise HTTPException(status_code=404, detail="PDF file not found.")

@@ -11,7 +11,7 @@ import logging
 from typing import Optional
 
 from fastapi import APIRouter, HTTPException, Query, Depends
-from fastapi.responses import FileResponse
+from fastapi.responses import FileResponse, Response
 from pydantic import BaseModel
 
 from app.services.search_service import get_searcher
@@ -23,6 +23,7 @@ from app.db.crud import document_repository as doc_repo
 from app.db.crud import session_repository as session_repo
 from app.db.crud import session_document_repository as sd_repo
 from app.workers.document_worker import process_document_task
+from app.services.blob_storage_service import blob_storage_service, BlobStorageError
 
 logger = logging.getLogger(__name__)
 
@@ -255,12 +256,18 @@ async def analyze_case(
 
     abs_pdf_path = os.path.join(base_dir, "data", "pdfs", actual_filename)
 
-    # Verify the PDF actually exists before creating a document record
-    if not os.path.exists(abs_pdf_path):
-        raise HTTPException(
-            status_code=404,
-            detail=f"PDF file not found on disk: {actual_filename}"
-        )
+    # PDF may be on disk or in Azure Blob Storage — either is fine
+    pdf_exists = os.path.exists(abs_pdf_path)
+    if not pdf_exists:
+        # Check Azure Blob Storage
+        blob_path = f"data/pdfs/{actual_filename}"
+        try:
+            pdf_exists = blob_storage_service.blob_exists(blob_path)
+        except Exception:
+            pdf_exists = False
+    if not pdf_exists:
+        # Still create the session — chunks are in Qdrant/Postgres, PDF is optional
+        logger.warning("PDF not found locally or in Azure: %s (continuing anyway)", actual_filename)
 
     # ── Ensure Document record exists ──────────────────────────────────────────
     doc = db.query(Document).filter(
@@ -305,7 +312,7 @@ async def analyze_case(
 )
 async def serve_pdf(filename: str):
     """
-    Serve a PDF file from the data/pdfs directory.
+    Serve a PDF file — checks local disk first, then Azure Blob Storage.
     """
     safe_filename = os.path.basename(filename)
     local_pdf_dir = os.path.join(
@@ -313,14 +320,25 @@ async def serve_pdf(filename: str):
         "data", "pdfs",
     )
     pdf_path = os.path.join(local_pdf_dir, safe_filename)
-    if not os.path.exists(pdf_path):
+
+    # Try local file first
+    if os.path.exists(pdf_path):
+        return FileResponse(
+            pdf_path,
+            media_type="application/pdf",
+            content_disposition_type="inline",
+        )
+
+    # Fall back to Azure Blob Storage
+    blob_path = f"data/pdfs/{safe_filename}"
+    try:
+        pdf_bytes = blob_storage_service.download_pdf(blob_path)
+        return Response(
+            content=pdf_bytes,
+            media_type="application/pdf",
+            headers={"Content-Disposition": "inline"},
+        )
+    except (BlobStorageError, Exception) as exc:
+        logger.warning("PDF not found locally or in Azure: %s — %s", safe_filename, exc)
         raise HTTPException(status_code=404, detail="PDF file not found.")
-    
-    # content_disposition_type="inline" tells the browser to render in-viewer.
-    # Omitting `filename` prevents Chrome from treating it as an attachment download.
-    return FileResponse(
-        pdf_path,
-        media_type="application/pdf",
-        content_disposition_type="inline",
-    )
 
