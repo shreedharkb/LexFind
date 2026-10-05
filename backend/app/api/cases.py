@@ -16,6 +16,7 @@ from pydantic import BaseModel
 
 from app.services.search_service import get_searcher
 from sqlalchemy.orm import Session
+from sqlalchemy import text
 from app.db.session import get_db
 from app.api.dependencies.auth import get_current_user
 from app.db.models import User, Document
@@ -310,11 +311,33 @@ async def analyze_case(
     "/pdf/{filename}",
     summary="Serve a legal case PDF",
 )
-async def serve_pdf(filename: str):
+async def serve_pdf(filename: str, db: Session = Depends(get_db)):
     """
     Serve a PDF file — checks local disk first, then Azure Blob Storage.
+
+    `filename` can be a UUID (looked up in legal_documents) or a raw filename.
     """
-    safe_filename = os.path.basename(filename)
+    import uuid as _uuid
+
+    resolved_filename = None
+
+    # If filename looks like a UUID, try looking up the real PDF filename
+    try:
+        _uuid.UUID(filename)
+        row = db.execute(
+            text("SELECT filename FROM legal_documents WHERE id = CAST(:doc_id AS uuid)"),
+            {"doc_id": filename}
+        ).fetchone()
+        if row and row[0]:
+            resolved_filename = row[0]
+    except (ValueError, Exception):
+        pass
+
+    # Fallback: use the parameter directly as a filename
+    if not resolved_filename:
+        resolved_filename = filename if filename.endswith(".pdf") else f"{filename}.pdf"
+
+    safe_filename = os.path.basename(resolved_filename)
     local_pdf_dir = os.path.join(
         os.path.dirname(os.path.dirname(os.path.dirname(__file__))),
         "data", "pdfs",

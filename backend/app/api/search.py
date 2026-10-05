@@ -273,15 +273,22 @@ async def serve_pdf(
     """
     Serve a PDF file from the data/pdfs directory using its document_id (UUID).
     """
-    row = db.execute(
-        text("SELECT filename FROM legal_documents WHERE id = CAST(:doc_id AS uuid)"),
-        {"doc_id": document_id}
-    ).fetchone()
+    try:
+        row = db.execute(
+            text("SELECT filename FROM legal_documents WHERE id = CAST(:doc_id AS uuid)"),
+            {"doc_id": document_id}
+        ).fetchone()
+        filename = row[0] if row and row[0] else None
+    except Exception:
+        filename = None
 
-    if not row or not row[0]:
-        raise HTTPException(status_code=404, detail="PDF file not found in database.")
+    if not filename:
+        # Fallback: maybe the document_id is just the filename minus extension, or it has .pdf
+        if document_id.endswith(".pdf"):
+            filename = document_id
+        else:
+            filename = f"{document_id}.pdf"
 
-    filename = row[0]
     safe_filename = os.path.basename(filename)
     local_pdf_dir = os.path.join(
         os.path.dirname(os.path.dirname(os.path.dirname(__file__))),

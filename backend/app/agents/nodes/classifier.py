@@ -22,9 +22,10 @@ You are a legal AI classifier for a legal case search system.
 Analyse the user question and return a JSON object — nothing else.
 
 Rules for intent:
-- "general": pure legal knowledge, no document search needed.
+- "general": pure legal knowledge question — no document/case search needed.
+- "general_summary": user wants a summary of a specific case, statute, or legal concept by name.
 - "document_chat": question is about a specific attached document. Use only if has_documents=true.
-- "corpus_search": needs searching across multiple cases.
+- "corpus_search": needs searching across multiple cases in the database.
 
 is_legal must be false for: cooking, sports, weather, math, coding, or anything unrelated to law, legal procedures, courts, or legal concepts.\
 """
@@ -36,7 +37,7 @@ Attached documents: {has_documents}
 Return JSON:
 {{
   "is_legal": true or false,
-  "intent": "general" | "document_chat" | "corpus_search",
+  "intent": "general" | "general_summary" | "document_chat" | "corpus_search",
   "reasoning": "one line explanation"
 }}\
 """
@@ -86,7 +87,7 @@ def classifier_node(state: LexFindState) -> LexFindState:
         is_legal = bool(parsed.get("is_legal", True))
         intent = str(parsed.get("intent", "general"))
         
-        if intent not in {"general", "document_chat", "corpus_search"}:
+        if intent not in {"general", "general_summary", "document_chat", "corpus_search"}:
             intent = "general"
 
         if intent == "document_chat" and not has_documents:
@@ -102,4 +103,6 @@ def classifier_node(state: LexFindState) -> LexFindState:
 def route_after_classifier(state: LexFindState) -> str:
     if not state.get("is_legal", True):
         return "blocked"
-    return state.get("intent", "general")
+    intent = state.get("intent", "general")
+    # Map to graph node names
+    return intent if intent in {"general", "general_summary", "document_chat", "corpus_search", "blocked"} else "general"

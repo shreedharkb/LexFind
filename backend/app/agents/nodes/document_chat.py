@@ -4,12 +4,9 @@ Answers queries based on attached documents.
 Routes retrieval based on source_type (legal_case vs uploaded).
 """
 import logging
-import os
-import re
 from pathlib import Path
 
 from dotenv import load_dotenv
-from groq import Groq
 from qdrant_client.http.models import FieldCondition, Filter, Fusion, FusionQuery, MatchValue, Prefetch, SparseVector
 from sqlalchemy import text
 from sqlalchemy.orm import Session
@@ -36,13 +33,6 @@ _SYSTEM_PROMPT = (
 
 TOP_K_QDRANT = 8
 TOP_K_PGVECTOR = 8
-
-
-def _clean(text: str) -> str:
-    text = text.strip()
-    text = re.sub(r"^(System:|Assistant:|AI:|Response:)\s*", "", text, flags=re.IGNORECASE | re.MULTILINE)
-    text = re.sub(r"\n{3,}", "\n\n", text)
-    return text.strip()
 
 
 def _search_qdrant_by_doc(db: Session, doc_id: str, question: str, query_vector: list[float]) -> list[dict]:
@@ -146,8 +136,11 @@ def document_chat_node(state: LexFindState) -> LexFindState:
     if not doc_ids:
         return {**state, "answer": "No documents are attached to this session.", "citations": [], "retrieved_chunks": []}
 
-    query_vector = embed(question)
-    all_chunks = []
+    # Use enhanced_query from query_enhancement_node if available
+    search_query = state.get("enhanced_query") or question
+    query_vector = embed(search_query)
+    all_chunks   = []
+    attempts     = state.get("retrieval_attempts", 0)
 
     try:
         with DatabaseSession() as db:
@@ -165,26 +158,21 @@ def document_chat_node(state: LexFindState) -> LexFindState:
         return {**state, "answer": "Retrieval failed. Please try again.", "citations": [], "retrieved_chunks": [], "error": str(exc)}
 
     if not all_chunks:
-        return {**state, "answer": "I could not find relevant content in the attached documents for your question.", "citations": [], "retrieved_chunks": []}
+        return {
+            **state,
+            "answer":             "I could not find relevant content in the attached documents for your question.",
+            "citations":          [],
+            "retrieved_chunks":   [],
+            "retrieval_attempts": attempts + 1,
+        }
 
-    context = _build_context(all_chunks)
     citations = _build_citations(all_chunks)
 
-    user_prompt = f"Context:\n\n{context}\n\nQuestion: {question}\n\nAnswer:"
-    messages = [{"role": "system", "content": _SYSTEM_PROMPT}]
-    messages.extend(history)
-    messages.append({"role": "user", "content": user_prompt})
-
-    try:
-        api_key = os.getenv("GROQ_API_KEY", "").strip().strip('"').strip("'")
-        model = os.getenv("GROQ_MODEL", "llama-3.3-70b-versatile")
-        client = Groq(api_key=api_key)
-
-        response = client.chat.completions.create(
-            model=model, messages=messages, temperature=0.1, max_tokens=1500, stream=False,
-        )
-        answer = _clean(response.choices[0].message.content or "")
-        return {**state, "answer": answer, "citations": citations, "retrieved_chunks": all_chunks}
-    except Exception as exc:
-        logger.error("DocumentChat LLM error: %s", exc)
-        return {**state, "answer": "The AI encountered an error. Please try again.", "citations": citations, "retrieved_chunks": all_chunks, "error": str(exc)}
+    return {
+        **state,
+        "retrieved_chunks":   all_chunks,
+        "citations":          citations,
+        "retrieval_attempts": attempts + 1,
+        "retrieval_passed":   None,  # grader will evaluate
+        "prompt_messages":    None,  # response_generation_node handles this
+    }

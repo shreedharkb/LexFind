@@ -122,3 +122,10 @@ agents.md
 claude.md
 .kiro
 AGENT_HANDOFF_README.md
+
+# ── Database Dumps & Large Files ────────────────────────────
+*.dump
+*.sql
+!backend/alembic/**/*.sql
+*.tar.gz
+*.zip

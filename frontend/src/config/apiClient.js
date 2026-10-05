@@ -62,15 +62,24 @@ export const authApi = {
 
 // ── Cases ─── /api/cases/* ────────────────────────────────────────────────
 export const casesApi = {
-  search: (query, token, top_k = 10, search_mode = 'hybrid') =>
+  search: (query, token, top_k = 10, search_mode = 'hybrid', filters = {}) =>
     request('/api/search', {
       method: 'POST',
-      body: JSON.stringify({ query, top_k, search_mode }),
+      body: JSON.stringify({ query, top_k, search_mode, ...filters }),
     }, token),
+
+  searchByName: (query, token, top_k = 10) =>
+    request('/api/search/by-name', {
+      method: 'POST',
+      body: JSON.stringify({ query, top_k }),
+    }, token),
+
+  getSimilarCases: (documentId, token, top_k = 6) =>
+    request(`/api/search/similar/${encodeURIComponent(documentId)}?top_k=${top_k}`, {}, token),
 
   get: (caseId) =>
     request(`/api/cases/${encodeURIComponent(caseId)}`),
-    
+
   analyze: (caseId, token) =>
     request(`/api/cases/${encodeURIComponent(caseId)}/analyze`, { method: 'POST' }, token),
 };
