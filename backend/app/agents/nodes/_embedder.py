@@ -7,7 +7,9 @@ model is only ever loaded ONCE across the entire process (singleton).
 from app.services.embedding_service import embed_query as _embed_query
 
 
-def embed(text: str) -> list[float]:
+from typing import List
+
+def embed(text: str) -> List[float]:
     """
     Encode a single string into a 768-dim float list suitable for Qdrant search.
 

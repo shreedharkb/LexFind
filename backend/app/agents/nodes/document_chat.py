@@ -10,6 +10,7 @@ from dotenv import load_dotenv
 from qdrant_client.http.models import FieldCondition, Filter, Fusion, FusionQuery, MatchValue, Prefetch, SparseVector
 from sqlalchemy import text
 from sqlalchemy.orm import Session
+from typing import List, Dict
 
 from app.agents.nodes._embedder import embed
 from app.agents.nodes._qdrant import COLLECTION_NAME, get_qdrant
@@ -35,7 +36,7 @@ TOP_K_QDRANT = 8
 TOP_K_PGVECTOR = 8
 
 
-def _search_qdrant_by_doc(db: Session, doc_id: str, question: str, query_vector: list[float]) -> list[dict]:
+def _search_qdrant_by_doc(db: Session, doc_id: str, question: str, query_vector: List[float]) -> List[Dict]:
     client = get_qdrant()
     doc_filter = Filter(must=[FieldCondition(key="document_id", match=MatchValue(value=doc_id))])
     limit = TOP_K_QDRANT * 3
@@ -73,7 +74,7 @@ def _search_qdrant_by_doc(db: Session, doc_id: str, question: str, query_vector:
     ]
 
 
-def _search_pgvector_by_doc(db: Session, doc_id: str, query_vector: list[float]) -> list[dict]:
+def _search_pgvector_by_doc(db: Session, doc_id: str, query_vector: List[float]) -> List[Dict]:
     vector_str = "[" + ",".join(f"{v:.6f}" for v in query_vector) + "]"
     sql = text("""
         SELECT
@@ -98,7 +99,7 @@ def _search_pgvector_by_doc(db: Session, doc_id: str, query_vector: list[float])
     ]
 
 
-def _build_citations(chunks: list[dict]) -> list[dict]:
+def _build_citations(chunks: List[Dict]) -> List[Dict]:
     citations = []
     for c in chunks:
         text = c.get("chunk_text", "")
@@ -120,7 +121,7 @@ def _build_citations(chunks: list[dict]) -> list[dict]:
     return citations
 
 
-def _build_context(chunks: list[dict]) -> str:
+def _build_context(chunks: List[Dict]) -> str:
     parts = []
     for c in chunks:
         label = f"{c.get('title', 'Unknown')} ({c.get('year', c.get('page_number', ''))})"

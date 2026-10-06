@@ -8,7 +8,7 @@ GET  /api/v1/health            – system health check
 
 import os
 import logging
-from typing import Optional
+from typing import Optional, List, Dict
 
 from fastapi import APIRouter, HTTPException, Query, Depends
 from fastapi.responses import FileResponse, Response
@@ -48,7 +48,7 @@ class CaseSearchResult(BaseModel):
 class CaseSearchResponse(BaseModel):
     success: bool
     query: str
-    results: list[CaseSearchResult]
+    results: List[CaseSearchResult]
     total_results: int
 
 
