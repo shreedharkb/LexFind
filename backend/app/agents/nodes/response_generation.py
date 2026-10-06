@@ -41,7 +41,9 @@ _DOCUMENT_SYSTEM = (
 )
 
 
-def _build_context_block(chunks: list, web_results: list, system_note: str | None) -> str:
+from typing import Optional
+
+def _build_context_block(chunks: list, web_results: list, system_note: Optional[str]) -> str:
     """Build the full context section for the prompt."""
     parts = []
 
