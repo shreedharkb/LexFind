@@ -57,7 +57,7 @@ async def _generate_session_title(question: str, answer: str) -> str:
     """Call Groq to generate a concise 4-6 word session title."""
     try:
         api_key = os.getenv("GROQ_API_KEY", "").strip().strip('"').strip("'")
-        model = os.getenv("GROQ_MODEL", "llama-3.1-8b-instant")
+        model = os.getenv("GROQ_MODEL", "openai/gpt-oss-120b")
         client = AsyncGroq(api_key=api_key)
         prompt = (
             f"Create a concise 4-6 word title for a legal chat session. "
@@ -261,7 +261,7 @@ async def send_message(
             # Step 2a: Graph produced prompt_messages — stream via AsyncGroq token-by-token.
             if prompt_messages:
                 api_key = os.getenv("GROQ_API_KEY", "").strip().strip('"').strip("'")
-                model   = os.getenv("GROQ_MODEL", "llama-3.1-8b-instant")
+                model   = os.getenv("GROQ_MODEL", "openai/gpt-oss-120b")
                 temperature = final_state.get("llm_temperature") or 0.3
                 max_tokens  = final_state.get("llm_max_tokens")  or 1024
 

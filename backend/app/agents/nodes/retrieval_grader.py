@@ -4,7 +4,7 @@ Node 5 — RetrievalGrader
 LLM-based grader that evaluates whether retrieved chunks are actually
 relevant to the enhanced query.
 
-Uses llama-3.1-8b-instant (fast small model, binary output).
+Uses openai/gpt-oss-20b (fast small model, binary output).
 
 Failure policy: On grader failure default to retrieval_passed=True.
 A false positive is recoverable (weak answer). A false negative wastes a
@@ -70,7 +70,7 @@ def retrieval_grader_node(state: LexFindState) -> LexFindState:
         api_key = os.getenv("GROQ_API_KEY", "").strip().strip('"').strip("'")
         client  = Groq(api_key=api_key)
         resp = client.chat.completions.create(
-            model="llama-3.1-8b-instant",
+            model="openai/gpt-oss-20b",
             messages=[{"role": "user", "content": prompt}],
             temperature=0.0,
             max_tokens=60,

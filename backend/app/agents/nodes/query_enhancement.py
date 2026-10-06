@@ -6,7 +6,7 @@ Single LLM call. Two outputs:
   - enhanced_query: standalone resolved search query
   - needs_web_search: bool, True if recency signals detected
 
-Uses llama-3.1-8b-instant (fast small model) — never the main generation model.
+Uses openai/gpt-oss-20b (fast small model) — never the main generation model.
 
 Failure policy: On any exception, fall back to raw question and set
 needs_web_search=False. Never crash the pipeline or pass empty string.
@@ -90,7 +90,7 @@ def query_enhancement_node(state: LexFindState) -> LexFindState:
         from groq import Groq
         client = Groq(api_key=api_key)
         resp = client.chat.completions.create(
-            model="llama-3.1-8b-instant",
+            model="openai/gpt-oss-20b",
             messages=[{"role": "user", "content": prompt}],
             temperature=0.0,
             max_tokens=200,

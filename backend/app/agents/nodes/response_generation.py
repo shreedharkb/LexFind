@@ -10,7 +10,7 @@ Handles:
   - system_note injection from graceful_degradation_node (optional)
   - confidence_tier for logging / telemetry
 
-Uses the main Groq model (llama-3.1-8b-instant) — quality matters here.
+Uses the main Groq model (openai/gpt-oss-120b) — quality matters here.
 """
 import logging
 import os

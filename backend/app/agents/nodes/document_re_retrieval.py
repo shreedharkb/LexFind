@@ -28,7 +28,7 @@ def _relax_query(query: str, reason: str) -> str:
         api_key = os.getenv("GROQ_API_KEY", "").strip().strip('"').strip("'")
         client  = Groq(api_key=api_key)
         resp = client.chat.completions.create(
-            model="llama-3.1-8b-instant",
+            model="openai/gpt-oss-20b",
             messages=[{"role": "user", "content": _RELAX_PROMPT.format(failed_query=query, reason=reason)}],
             temperature=0.3,
             max_tokens=80,
