@@ -16,7 +16,7 @@ AI-powered legal research and conversational analysis platform. Search across 46
 ## Features
 
 **Semantic Search**
-Natural language search over 46,456 pre-indexed Indian Supreme Court judgments. Queries are embedded using `sentence-transformers/all-mpnet-base-v2` and compared against a Qdrant vector database (1.1M+ vectors). Results are ranked by cosine similarity and include metadata filters for court, year, state, and case type. To guarantee stability and prevent namespace conflicts, Qdrant search is implemented via direct HTTP REST API calls (`httpx`) rather than the Python SDK.
+Natural language search over 46,456 pre-indexed Indian Supreme Court judgments. Queries are embedded using `sentence-transformers/all-mpnet-base-v2` and compared against a Qdrant vector database (1.1M+ vectors). Results are ranked by cosine similarity and include metadata filters for court, year, state, and case type.
 
 **Agentic RAG Chat**
 Every chat request flows through a LangGraph state machine that classifies intent and routes to one of three execution paths: general legal knowledge, document-specific RAG, or full corpus search. The classifier and the answer node together make exactly two LLM calls per request. Citations are built directly from Qdrant payload metadata — no LLM extraction.
@@ -34,70 +34,33 @@ Conversations are persistent and multi-document. Each session stores ordered mes
 
 ```mermaid
 flowchart TD
-    classDef client fill:#2563eb,stroke:#1e3a8a,color:#fff
-    classDef api fill:#059669,stroke:#064e3b,color:#fff
-    classDef db fill:#d97706,stroke:#78350f,color:#fff
-    classDef queue fill:#7c3aed,stroke:#4c1d95,color:#fff
-    classDef llm fill:#db2777,stroke:#831843,color:#fff
-    classDef lgraph fill:#4f46e5,stroke:#312e81,color:#fff
-
-    React["React SPA<br>Vite + TailwindCSS"]:::client
-
-    subgraph FastAPI["FastAPI Backend"]
-        AuthRoute["POST /api/auth<br>JWT Auth"]:::api
-        SearchRoute["POST /api/search<br>Corpus Search"]:::api
-        UploadRoute["POST /api/documents/upload<br>PDF Upload"]:::api
-        ChatRoute["POST /api/sessions/id/messages<br>SSE Stream"]:::api
-        CasesRoute["POST /api/cases/id/analyze<br>Attach Case"]:::api
-        DocStatusRoute["GET /api/documents/id/status<br>Poll Status"]:::api
+    classDef page fill:#2563eb,stroke:#1e3a8a,color:#fff
+    classDef agent fill:#4f46e5,stroke:#312e81,color:#fff
+    classDef backend fill:#059669,stroke:#064e3b,color:#fff
+    classDef userNode fill:#64748b,stroke:#475569,color:#fff
+    
+    User([User]):::userNode
+    
+    subgraph Frontend ["React Frontend"]
+        SearchPage["Search Page"]:::page
+        AssistantPage["Assistant Page (Chat)"]:::page
     end
-
-    React --> AuthRoute
-    React --> SearchRoute
-    React --> UploadRoute
-    React --> ChatRoute
-    React --> CasesRoute
-    React --> DocStatusRoute
-
-    subgraph Databases["Data Persistence Layer"]
-        PG["PostgreSQL<br>Users, Sessions"]:::db
-        PGVector["PostgreSQL pgvector<br>Private Embeddings"]:::db
-        Qdrant["Qdrant<br>46k Cases, 1.1M Vectors"]:::db
-        BlobStorage["Azure Blob / Local Disk<br>Raw PDFs"]:::db
+    
+    subgraph Backend ["FastAPI Backend & Services"]
+        Qdrant[("Qdrant Database<br>(46k Cases)")]:::backend
+        SyncWorker["Async Document Processing<br>(Celery + Extract + Embed)"]:::backend
+        Agent{"LangGraph Agent<br>Orchestrator"}:::agent
     end
-
-    AuthRoute <--> PG
-    SearchRoute -->|"Direct HTTP<br>Dense Search"| Qdrant
-    SearchRoute --> PG
-    CasesRoute --> PG
-
-    subgraph AsyncProcessing["Async Background Processing"]
-        RabbitMQ["RabbitMQ<br>Task Broker"]:::queue
-        CeleryWorker["Celery Worker<br>lexfind_documents"]:::queue
-    end
-
-    UploadRoute -->|"SHA-256<br>dedup check"| PG
-    UploadRoute --> BlobStorage
-    UploadRoute --> RabbitMQ
-    RabbitMQ --> CeleryWorker
-    CeleryWorker -->|"PyMuPDF extract<br>LangChain chunk"| BlobStorage
-    CeleryWorker -->|"all-mpnet-base-v2<br>768-dim embed"| PGVector
-    CeleryWorker -->|"status = ready"| PG
-
-    LangGraphAgent["lex_graph State Machine<br>(See docs/agent.md for details)"]:::lgraph
-
-    ChatRoute -->|"Validate JWT<br>ownership"| PG
-    ChatRoute -->|"Persist user<br>message"| PG
-    ChatRoute -->|"Load history<br>+ doc IDs"| PG
-    ChatRoute --> LangGraphAgent
-
-    LangGraphAgent <-->|"LLM API Calls"| GroqLLM["Groq API<br>llama-3.3-70b-versatile"]:::llm
-    LangGraphAgent <-->|"Cosine search<br>by doc_id"| PGVector
-    LangGraphAgent <-->|"Direct HTTP<br>Dense Search"| Qdrant
-
-    LangGraphAgent -->|"answer + citations"| SSE["SSE Streamer"]
-    SSE -->|"text/event-stream"| React
-    SSE -->|"Persist assistant<br>message"| PG
+    
+    User --> SearchPage
+    User --> AssistantPage
+    
+    SearchPage -- "Clicks 'Analyze'" --> AssistantPage
+    SearchPage -- "Hybrid & Keyword Search" --> Qdrant
+    
+    AssistantPage -- "Uploads PDF" --> SyncWorker
+    AssistantPage -- "Asks Question" --> Agent
+    Agent -. "Streams Answer + Citations" .-> AssistantPage
 ```
 
 Infrastructure layers:
@@ -106,25 +69,20 @@ Infrastructure layers:
 - **LangGraph** orchestrates intent classification and retrieval routing.
 - **Celery + RabbitMQ** processes document uploads asynchronously.
 - **PostgreSQL + pgvector** stores relational data and private document vectors.
-- **Qdrant**: High-performance semantic search for the 46k case corpus. Queried via direct REST HTTP requests (bypassing the Python SDK) for robust unnamed-vector execution.
-- **pgvector**: Local, isolated semantic search for user-uploaded private PDFs.
-
-**Infrastructure**
-- **Nginx (Reverse Proxy)**: Terminates SSL/HTTPS (`certbot`) on the Azure VM and forwards traffic to the FastAPI uvicorn workers.
-- **Vercel**: Hosts the React frontend and handles proxy rewrites (`vercel.json`) to the secure backend domain.
-- **RabbitMQ**: Message broker for Celery document processing.
+- **Qdrant** stores the 46k-case shared corpus (1.1M vectors, metadata indexed).
+- **Groq** runs `llama-3.1-8b-instant` for LLM inference.
 
 ## Tech Stack
 
 | Component | Technology |
 |---|---|
 | Frontend | React 18, Vite, TailwindCSS |
-| Backend | FastAPI, Python 3.11+, SQLAlchemy, Alembic |
+| Backend | FastAPI, Python 3.9+, SQLAlchemy, Alembic |
 | Agent Orchestration | LangGraph, LangChain |
 | Task Queue | Celery, RabbitMQ |
 | Database | PostgreSQL 17, pgvector |
 | Vector Store (Corpus) | Qdrant |
-| LLM | Groq llama-3.3-70b-versatile |
+| LLM | Groq llama-3.1-8b-instant |
 | Embeddings | sentence-transformers/all-mpnet-base-v2 (768-dim) |
 | PDF Processing | PyMuPDF, LangChain RecursiveCharacterTextSplitter |
 | File Storage | Azure Blob Storage (or local fallback) |
@@ -162,7 +120,6 @@ LexFind/
 │   │   ├── services/             # Embedding, retrieval, blob storage
 │   │   ├── workers/              # Celery document processing task
 │   │   └── main.py               # App factory
-│   ├── tests/                    # Unit & integration test suites
 │   └── requirements.txt
 ├── frontend/
 │   └── src/
@@ -177,7 +134,7 @@ LexFind/
 
 ### Prerequisites
 
-- Python 3.11+
+- Python 3.9+
 - Node.js 18+
 - Docker and Docker Compose
 - Groq API key from console.groq.com
@@ -187,7 +144,7 @@ LexFind/
 
 ```bash
 # 1. Start infrastructure
-docker compose up db rabbitmq qdrant -d
+docker compose up db rabbitmq -d
 
 # 2. Set up Python environment
 cd backend
@@ -220,15 +177,6 @@ npm run dev
 
 Open `http://localhost:5173`.
 
-### Running Tests
-
-To run the backend test suite (including unit and integration tests for Azure Blob Storage and endpoints):
-
-```bash
-cd backend
-pytest tests/ -v
-```
-
 ## Environment Variables
 
 ### Backend (`backend/.env`)
@@ -242,7 +190,7 @@ pytest tests/ -v
 | `QDRANT_HOST` | Qdrant host (default: localhost) |
 | `QDRANT_PORT` | Qdrant port (default: 6333) |
 | `AZURE_STORAGE_CONNECTION_STRING` | Optional, enables Azure Blob Storage |
-| `GROQ_MODEL` | LLM model name (default: llama-3.3-70b-versatile) |
+| `GROQ_MODEL` | LLM model name (default: llama-3.1-8b-instant) |
 
 ### Frontend (`frontend/.env`)
 
@@ -255,24 +203,29 @@ pytest tests/ -v
 LexFind underwent rigorous multi-system empirical evaluations against 192 test queries over the full 46,000 document corpus. 
 We migrated from a baseline FAISS index to a **Qdrant Hybrid RRF** pipeline, boosting Hit@5 accuracy for excerpt queries from 35.9% to **82.3%**.
 
-For full evaluation numbers, performance comparisons, and known limitations, please read the **[RAG Metrics Report](docs/rag_metrics.md)**.
+For full evaluation numbers, performance comparisons, and known limitations, please read the **[RAG Metrics Report](docs/metrics_and_evals/rag_metrics.md)**.
 
 ## Documentation
 
-Detailed technical documentation is available in the `docs/` directory:
+Detailed technical documentation is available in the `docs/` directory, organized by category:
 
-- [System Overview & Architecture](docs/overview.md)
-- [Data Flows & API Design](docs/data_flows.md)
-- [Database Schema & Migrations](docs/database.md)
-- [LangGraph Agent Orchestrator](docs/agent.md)
-- [RAG Metrics & Limitations](docs/rag_metrics.md)
-- [API Reference](docs/api_reference.md)
-- [Setup & Installation](docs/setup_and_installation.md)
+### Getting Started
+- [System Overview & Architecture](docs/getting_started/overview.md)
+- [Setup & Installation](docs/getting_started/setup_and_installation.md)
 
-## Author
+### Architecture
+- [Data Flows & API Design](docs/architecture/data_flows.md)
+- [LangGraph Agent Orchestrator](docs/architecture/agent.md)
+- [Agent Decisions (Why a 10-node agent)](docs/architecture/agent_decisions.md)
+- [Database Schema & Migrations](docs/architecture/database.md)
+- [Chunking Strategy & Legal Section Logic](docs/architecture/chunking_strategy.md)
 
-**Shreedhar K B** — Design, development, and deployment.
+### API & Integration
+- [API Reference](docs/api/api_reference.md)
+- [Rate Limiting (Token Budgets)](docs/api/rate_limiting.md)
 
-## License
-
-This project is for educational and research purposes.
+### Metrics & Evaluation
+- [Load & Performance Metrics](docs/metrics_and_evals/performance_metrics.md)
+- [RAG Search Accuracy Metrics](docs/metrics_and_evals/rag_metrics.md)
+- [Evaluation Methodology](docs/metrics_and_evals/evaluation_methodology.md)
+- [Redis Cache Performance](docs/metrics_and_evals/cache_metrics.md)

@@ -81,7 +81,7 @@ class DocumentProcessingService:
     @staticmethod
     def generate_summary(full_text: str) -> str:
         api_key = os.getenv("GROQ_API_KEY", "").strip().strip('"').strip("'")
-        model = os.getenv("GROQ_MODEL", "llama-3.3-70b-versatile")
+        model = os.getenv("GROQ_MODEL", "llama-3.1-8b-instant")
         if not api_key: return "Summary generation skipped (no API key configured)."
         
         try:

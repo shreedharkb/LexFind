@@ -62,7 +62,7 @@ def classifier_node(state: LexFindState) -> LexFindState:
 
     try:
         client = _get_groq_client()
-        model = os.getenv("GROQ_MODEL", "llama-3.3-70b-versatile")
+        model = os.getenv("GROQ_MODEL", "llama-3.1-8b-instant")
 
         response = client.chat.completions.create(
             model=model,
