@@ -271,6 +271,15 @@ function SearchPage() {
     }
   };
 
+  const handleReset = () => {
+    setQuery('');
+    setResults([]);
+    setSearchTime(null);
+    clearFilters();
+    sessionStorage.removeItem('lexSearchQuery');
+    sessionStorage.removeItem('lexSearchResults');
+  };
+
   const clearFilters = () => {
     setFilterCourt(''); setFilterYearMin(''); setFilterYearMax('');
     setFilterState(''); setFilterCaseType('');
@@ -313,6 +322,16 @@ function SearchPage() {
                   placeholder={isNameMode ? "Enter party name or case title..." : "Enter your legal query or case details..."}
                   className="flex-1 min-w-0 px-1 sm:px-2 py-2.5 text-sm text-gray-800 placeholder-gray-400 border-none outline-none bg-transparent"
                 />
+                {(query || results.length > 0) && (
+                  <button
+                    type="button"
+                    onClick={handleReset}
+                    title="Reset Search"
+                    className="p-1.5 text-gray-400 hover:text-gray-900 rounded-full hover:bg-gray-100 transition-colors flex-shrink-0"
+                  >
+                    <X className="h-4 w-4" />
+                  </button>
+                )}
                 <button
                   type="submit"
                   disabled={loading || !query.trim()}
