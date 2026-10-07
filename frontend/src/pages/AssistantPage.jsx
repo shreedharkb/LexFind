@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useParams, useNavigate, useLocation, Link } from 'react-router-dom';
 import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
 import {
   Send, FileText, Loader2, AlertCircle, Plus,
   User, Bot, BookOpen, Trash2,
@@ -158,6 +159,7 @@ function Message({ msg, token, onViewPdf, onDownloadPdf }) {
             isUser ? 'prose-invert' : 'prose-gray'
           }`}>
             <ReactMarkdown
+              remarkPlugins={[remarkGfm]}
               components={{
                 p:    ({ children }) => <p className="mb-2 last:mb-0">{children}</p>,
                 ul:   ({ children }) => <ul className="list-disc pl-4 mb-2 space-y-1">{children}</ul>,
@@ -172,6 +174,18 @@ function Message({ msg, token, onViewPdf, onDownloadPdf }) {
                     isUser ? 'bg-gray-700' : 'bg-gray-100 text-gray-800'
                   }`}>{children}</code>
                 ),
+                table: ({ children }) => (
+                  <div className="overflow-x-auto my-4">
+                    <table className="min-w-full divide-y divide-gray-300 border border-gray-200 rounded-lg">
+                      {children}
+                    </table>
+                  </div>
+                ),
+                thead: ({ children }) => <thead className="bg-gray-50">{children}</thead>,
+                tbody: ({ children }) => <tbody className="divide-y divide-gray-200 bg-white">{children}</tbody>,
+                tr: ({ children }) => <tr>{children}</tr>,
+                th: ({ children }) => <th className="px-3 py-3 text-left text-xs font-semibold text-gray-900 uppercase tracking-wider">{children}</th>,
+                td: ({ children }) => <td className="px-3 py-4 text-sm text-gray-500">{children}</td>,
               }}
             >
               {msg.content}
