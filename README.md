@@ -70,7 +70,7 @@ Infrastructure layers:
 - **Celery + RabbitMQ** processes document uploads asynchronously.
 - **PostgreSQL + pgvector** stores relational data and private document vectors.
 - **Qdrant** stores the 46k-case shared corpus (1.1M vectors, metadata indexed).
-- **Groq** runs `llama-3.1-8b-instant` for LLM inference.
+- **Groq** runs `openai/gpt-oss-120b` for LLM inference.
 
 ## Tech Stack
 
@@ -82,10 +82,10 @@ Infrastructure layers:
 | Task Queue | Celery, RabbitMQ |
 | Database | PostgreSQL 17, pgvector |
 | Vector Store (Corpus) | Qdrant |
-| LLM | Groq llama-3.1-8b-instant |
+| LLM | Groq openai/gpt-oss-120b |
 | Embeddings | sentence-transformers/all-mpnet-base-v2 (768-dim) |
 | PDF Processing | PyMuPDF, LangChain RecursiveCharacterTextSplitter |
-| File Storage | Azure Blob Storage (or local fallback) |
+| File Storage | Local Storage (USE_LOCAL_FILES=true) |
 | Deployment | Docker Compose, Azure VM, Azure Static Web Apps |
 
 ## Project Structure
@@ -190,7 +190,7 @@ Open `http://localhost:5173`.
 | `QDRANT_HOST` | Qdrant host (default: localhost) |
 | `QDRANT_PORT` | Qdrant port (default: 6333) |
 | `AZURE_STORAGE_CONNECTION_STRING` | Optional, enables Azure Blob Storage |
-| `GROQ_MODEL` | LLM model name (default: llama-3.1-8b-instant) |
+| `GROQ_MODEL` | LLM model name (default: openai/gpt-oss-120b) |
 
 ### Frontend (`frontend/.env`)
 
