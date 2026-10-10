@@ -186,11 +186,12 @@ Open `http://localhost:5173`.
 | `DATABASE_URL` | PostgreSQL connection string |
 | `RABBITMQ_URL` | RabbitMQ connection string |
 | `GROQ_API_KEY` | Required for LLM inference |
-| `SECRET_KEY` | JWT signing key |
+| `JWT_SECRET_KEY` | JWT signing key |
 | `QDRANT_HOST` | Qdrant host (default: localhost) |
 | `QDRANT_PORT` | Qdrant port (default: 6333) |
 | `AZURE_STORAGE_CONNECTION_STRING` | Optional, enables Azure Blob Storage |
 | `GROQ_MODEL` | LLM model name (default: openai/gpt-oss-120b) |
+| `REDIS_URL` | Optional, enables Redis rate limiting |
 
 ### Frontend (`frontend/.env`)
 
