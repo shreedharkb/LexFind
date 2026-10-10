@@ -9,7 +9,6 @@
 #   docker compose pull && docker compose up -d --build  → redeploy
 # ============================================================
 
-version: "3.9"
 
 networks:
   lexfind_net:
@@ -78,6 +77,16 @@ services:
     networks:
       - lexfind_net
 
+  # ── Redis (for rate limiting) ────────────────────────────
+  redis:
+    image: redis:7-alpine
+    container_name: lexfind_redis
+    restart: always
+    ports:
+      - "6379:6379"
+    networks:
+      - lexfind_net
+
   # ── FastAPI Backend ──────────────────────────────────────
   api:
     build:
@@ -135,3 +144,4 @@ services:
       start_period: 120s
     networks:
       - lexfind_net
+

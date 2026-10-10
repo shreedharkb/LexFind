@@ -81,3 +81,7 @@ nltk>=3.8.1           # sentence tokenisation
 
 # ── Testing ─────────────────────────────────────────────
 pytest==8.3.4
+
+# Web Search & Rate Limiting
+tavily-python>=0.5.0
+redis>=5.0.0

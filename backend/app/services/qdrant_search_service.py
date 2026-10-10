@@ -283,63 +283,21 @@ def _qdrant_hits_to_case_results(
 
 def qdrant_hybrid_search(query_text: str, qdrant_filter: Optional[Filter], limit: int) -> List[ScoredPoint]:
     """
-    Shared helper for hybrid (dense + sparse) search with RRF.
-    Used by the main search service and by the LangGraph agents.
+    Shared helper for semantic search.
+    Since the deployed collection uses unnamed vectors, hybrid search (RRF) is not supported.
+    Falls back to standard semantic vector search.
     """
     client = _get_qdrant_client()
-    dense_vec = _embed(query_text)
-    sparse_vec = _embed_sparse(query_text)
-
-    prefetch = [
-        Prefetch(
-            query=dense_vec,
-            using="dense",
-            filter=qdrant_filter,
-            limit=limit,
-        )
-    ]
-    if sparse_vec is not None:
-        prefetch.append(
-            Prefetch(
-                query=sparse_vec,
-                using="sparse",
-                filter=qdrant_filter,
-                limit=limit,
-            )
-        )
-
     return client.query_points(
         collection_name=QDRANT_COLLECTION,
-        prefetch=prefetch,
-        query=FusionQuery(fusion=Fusion.RRF),
+        query=_embed(query_text),
+        query_filter=qdrant_filter,
         limit=limit,
         with_payload=True,
     ).points
 
 def qdrant_search_by_mode(query_text: str, qdrant_filter: Optional[Filter], limit: int, mode: str = "hybrid") -> List[ScoredPoint]:
-    """Helper for dense, sparse, or hybrid search."""
-    client = _get_qdrant_client()
-    if mode == "dense":
-        return client.query_points(
-            collection_name=QDRANT_COLLECTION,
-            query=_embed(query_text),
-            using="dense",
-            query_filter=qdrant_filter,
-            limit=limit,
-            with_payload=True,
-        ).points
-    elif mode == "sparse":
-        sparse_vec = _embed_sparse(query_text)
-        if sparse_vec is None:
-            return qdrant_search_by_mode(query_text, qdrant_filter, limit, "dense")
-        return client.query_points(
-            collection_name=QDRANT_COLLECTION,
-            query=sparse_vec,
-            using="sparse",
-            query_filter=qdrant_filter,
-            limit=limit,
-            with_payload=True,
-        ).points
+    """Helper for dense search. Unnamed collection means all modes just use standard search."""
     return qdrant_hybrid_search(query_text, qdrant_filter, limit)
 
 

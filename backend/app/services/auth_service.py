@@ -21,12 +21,14 @@ from sqlalchemy.orm import Session
 
 from app.db.models import User
 
-# ── JWT config ──────────────────────────────────────────────────────────────
-SECRET_KEY: str = os.getenv("JWT_SECRET_KEY")
-if not SECRET_KEY or SECRET_KEY == "changeme-in-production":
-    raise RuntimeError("JWT_SECRET_KEY environment variable is not set or is insecure")
 ALGORITHM: str = os.getenv("JWT_ALGORITHM", "HS256")
 EXPIRY_HOURS: int = int(os.getenv("JWT_EXPIRATION_HOURS", "24"))
+
+def _get_secret_key() -> str:
+    secret = os.getenv("JWT_SECRET_KEY")
+    if not secret or secret == "change_this_in_production" or secret == "changeme-in-production":
+        raise RuntimeError("JWT_SECRET_KEY environment variable is not set or is insecure")
+    return secret
 
 
 class AuthenticationError(Exception):
@@ -82,13 +84,13 @@ class AuthenticationService:
         """Issue a signed JWT with a 24-hour expiry."""
         now = datetime.now(timezone.utc)
         payload = {"sub": user_id, "iat": now, "exp": now + timedelta(hours=EXPIRY_HOURS)}
-        return jwt.encode(payload, SECRET_KEY, algorithm=ALGORITHM)
+        return jwt.encode(payload, _get_secret_key(), algorithm=ALGORITHM)
 
     @staticmethod
     def verify_token(token: str) -> str:
         """Decode a JWT and return the user_id. Raises AuthenticationError on failure."""
         try:
-            data = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+            data = jwt.decode(token, _get_secret_key(), algorithms=[ALGORITHM])
             uid: Optional[str] = data.get("sub")
             if uid is None:
                 raise AuthenticationError("Token missing subject claim.")

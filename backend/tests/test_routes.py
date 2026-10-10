@@ -5,10 +5,9 @@ from app.main import create_app
 
 @pytest.fixture
 def client():
-    """Create a test client for the FastAPI app with mocked searcher."""
-    with patch('app.services.search_service.get_searcher') as mock_get_searcher:
+    """Create a test client for the FastAPI app with mocked search service."""
+    with patch('app.services.qdrant_search_service.get_search_service') as mock_get_searcher:
         mock_searcher = MagicMock()
-        mock_searcher.id2name = {'test': 'test.pdf'}
         mock_get_searcher.return_value = mock_searcher
         
         app = create_app()

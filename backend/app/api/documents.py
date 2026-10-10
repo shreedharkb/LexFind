@@ -9,7 +9,7 @@ import uuid
 from typing import Optional
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, File, HTTPException, UploadFile, status
+from fastapi import APIRouter, Depends, File, HTTPException, UploadFile, status, BackgroundTasks
 from fastapi.responses import StreamingResponse
 from sqlalchemy.orm import Session
 
@@ -26,6 +26,7 @@ router = APIRouter(prefix="/documents", tags=["Documents"])
 
 @router.post("/upload", response_model=DocumentUploadResponse, status_code=status.HTTP_201_CREATED)
 async def upload_document(
+    background_tasks: BackgroundTasks,
     file: UploadFile = File(...),
     db: Session = Depends(get_db),
     user_id: str = Depends(get_current_user),
@@ -66,7 +67,13 @@ async def upload_document(
         file_size_bytes=len(content)
     )
     
-    process_document_task.delay(document_id=str(doc.id), blob_path=blob_path)
+    try:
+        process_document_task.delay(document_id=str(doc.id), blob_path=blob_path)
+    except Exception as exc:
+        logger.warning("Celery unavailable, processing inline: %s", exc)
+        from app.services.document_processing_service import document_processing_service
+        background_tasks.add_task(document_processing_service.process_document, str(doc.id), blob_path)
+
     
     return {
         "id": doc.id,
