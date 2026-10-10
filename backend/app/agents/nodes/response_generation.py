@@ -84,7 +84,7 @@ def response_generation_node(state: LexFindState) -> LexFindState:
     web_results = state.get("web_results", [])
     system_note = state.get("system_note")
 
-    system_prompt = _DOCUMENT_SYSTEM if intent == "document" else _CORPUS_SYSTEM
+    system_prompt = _DOCUMENT_SYSTEM if intent == "document_chat" else _CORPUS_SYSTEM
     context_block = _build_context_block(chunks, web_results, system_note)
 
     user_prompt = (

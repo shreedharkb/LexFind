@@ -12,8 +12,8 @@ re-retrieval attempt and degrades UX unnecessarily.
 """
 import json
 import logging
-
 from app.agents.state import LexFindState
+from app.core.llm import get_groq_client
 
 logger = logging.getLogger(__name__)
 
@@ -65,10 +65,8 @@ def retrieval_grader_node(state: LexFindState) -> LexFindState:
     )
 
     try:
-        import os
-        from groq import Groq
-        api_key = os.getenv("GROQ_API_KEY", "").strip().strip('"').strip("'")
-        client  = Groq(api_key=api_key)
+        client = get_groq_client()
+        if not client: raise ValueError("Groq client not configured")
         resp = client.chat.completions.create(
             model="openai/gpt-oss-20b",
             messages=[{"role": "user", "content": prompt}],

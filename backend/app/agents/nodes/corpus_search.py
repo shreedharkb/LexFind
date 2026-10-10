@@ -14,6 +14,7 @@ from app.agents.nodes._embedder import embed
 from app.agents.nodes._qdrant import COLLECTION_NAME, get_qdrant
 from app.agents.state import LexFindState
 from app.db.session import DatabaseSession
+from app.services.qdrant_search_service import qdrant_hybrid_search
 
 _dotenv_path = Path(__file__).resolve().parents[4] / ".env"
 load_dotenv(dotenv_path=_dotenv_path, override=False)
@@ -94,15 +95,11 @@ def corpus_search_node(state: LexFindState) -> LexFindState:
     attempts     = state.get("retrieval_attempts", 0)
 
     try:
-        dense_vec = embed(search_query)
-        client    = get_qdrant()
-        result    = client.query_points(
-            collection_name=COLLECTION_NAME,
-            query=dense_vec,
-            limit=SEARCH_LIMIT,
-            with_payload=True,
+        raw_results = qdrant_hybrid_search(
+            query_text=search_query,
+            qdrant_filter=None,
+            limit=SEARCH_LIMIT
         )
-        raw_results = result.points
     except Exception as exc:
         logger.error("CorpusSearch Qdrant error: %s", exc)
         return {

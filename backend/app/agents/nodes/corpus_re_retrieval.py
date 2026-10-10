@@ -19,10 +19,11 @@ from app.agents.nodes.corpus_search import (
     _build_chunks, _build_citations, _deduplicate,
     SEARCH_LIMIT, TOP_DOCS,
 )
-from app.agents.nodes._embedder import embed
 from app.agents.nodes._qdrant import COLLECTION_NAME, get_qdrant
 from app.db.session import DatabaseSession
 from sqlalchemy import text as sa_text
+from app.services.qdrant_search_service import qdrant_search_by_mode
+from app.core.llm import get_groq_client
 
 logger = logging.getLogger(__name__)
 
@@ -41,9 +42,8 @@ Rewrite the query to be BROADER and MORE GENERAL.
 def _relax_query_llm(query: str, reason: str) -> str:
     """Call small LLM to broaden a failed query. Falls back to original on error."""
     try:
-        from groq import Groq
-        api_key = os.getenv("GROQ_API_KEY", "").strip().strip('"').strip("'")
-        client  = Groq(api_key=api_key)
+        client = get_groq_client()
+        if not client: raise ValueError("Groq client not configured")
         resp = client.chat.completions.create(
             model="openai/gpt-oss-20b",
             messages=[{
@@ -84,26 +84,12 @@ def corpus_re_retrieval_node(state: LexFindState) -> LexFindState:
     logger.info("CorpusReRetrieval: attempt=%d mode=%s reason=%s", attempts + 1, new_mode, reason)
 
     try:
-        dense_vec = embed(new_query)
-        client    = get_qdrant()
-
-        if new_mode == "dense":
-            result = client.query_points(
-                collection_name=COLLECTION_NAME,
-                query=dense_vec,
-                limit=SEARCH_LIMIT,
-                with_payload=True,
-            )
-        else:
-            # hybrid or sparse — fall back to dense for robustness
-            result = client.query_points(
-                collection_name=COLLECTION_NAME,
-                query=dense_vec,
-                limit=SEARCH_LIMIT,
-                with_payload=True,
-            )
-
-        raw_results = result.points
+        raw_results = qdrant_search_by_mode(
+            query_text=new_query,
+            qdrant_filter=None,
+            limit=SEARCH_LIMIT,
+            mode=new_mode
+        )
     except Exception as exc:
         logger.error("CorpusReRetrieval Qdrant error: %s", exc)
         return {**state, "retrieval_attempts": attempts + 1}

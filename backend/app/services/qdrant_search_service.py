@@ -281,19 +281,67 @@ def _qdrant_hits_to_case_results(
 
 # ── Vector search (single unnamed vector collection) ──────────────────────────
 
-def _search_qdrant(client: QdrantClient, query_vector: List[float],
-                   qdrant_filter: Optional[Filter], limit: int) -> List[ScoredPoint]:
+def qdrant_hybrid_search(query_text: str, qdrant_filter: Optional[Filter], limit: int) -> List[ScoredPoint]:
     """
-    Search using the collection's single unnamed vector.
-    Uses query_points() with a plain vector (no 'using' param = unnamed vector).
+    Shared helper for hybrid (dense + sparse) search with RRF.
+    Used by the main search service and by the LangGraph agents.
     """
+    client = _get_qdrant_client()
+    dense_vec = _embed(query_text)
+    sparse_vec = _embed_sparse(query_text)
+
+    prefetch = [
+        Prefetch(
+            query=dense_vec,
+            using="dense",
+            filter=qdrant_filter,
+            limit=limit,
+        )
+    ]
+    if sparse_vec is not None:
+        prefetch.append(
+            Prefetch(
+                query=sparse_vec,
+                using="sparse",
+                filter=qdrant_filter,
+                limit=limit,
+            )
+        )
+
     return client.query_points(
         collection_name=QDRANT_COLLECTION,
-        query=query_vector,
-        query_filter=qdrant_filter,
+        prefetch=prefetch,
+        query=FusionQuery(fusion=Fusion.RRF),
         limit=limit,
         with_payload=True,
     ).points
+
+def qdrant_search_by_mode(query_text: str, qdrant_filter: Optional[Filter], limit: int, mode: str = "hybrid") -> List[ScoredPoint]:
+    """Helper for dense, sparse, or hybrid search."""
+    client = _get_qdrant_client()
+    if mode == "dense":
+        return client.query_points(
+            collection_name=QDRANT_COLLECTION,
+            query=_embed(query_text),
+            using="dense",
+            query_filter=qdrant_filter,
+            limit=limit,
+            with_payload=True,
+        ).points
+    elif mode == "sparse":
+        sparse_vec = _embed_sparse(query_text)
+        if sparse_vec is None:
+            return qdrant_search_by_mode(query_text, qdrant_filter, limit, "dense")
+        return client.query_points(
+            collection_name=QDRANT_COLLECTION,
+            query=sparse_vec,
+            using="sparse",
+            query_filter=qdrant_filter,
+            limit=limit,
+            with_payload=True,
+        ).points
+    return qdrant_hybrid_search(query_text, qdrant_filter, limit)
+
 
 
 # ── Service class ──────────────────────────────────────────────────────────────
@@ -365,10 +413,9 @@ class QdrantSearchService:
 
         # ── Semantic / hybrid mode ─────────────────────────────────────────────
         qdrant_filter = _build_filter(court, year_min, year_max, state, case_type, section_type)
-        query_vector = _embed(query)
 
         try:
-            raw = _search_qdrant(client, query_vector, qdrant_filter, limit)
+            raw = qdrant_hybrid_search(query, qdrant_filter, limit)
         except Exception as exc:
             logger.exception("Qdrant search failed: %s", exc)
             return SearchResponse(
@@ -388,10 +435,9 @@ class QdrantSearchService:
             return SearchResponse(query=case_name, total_results=0, results=[], search_time_ms=0.0)
 
         try:
-            query_vector = _embed(case_name)
             name_filter = Filter(must=[FieldCondition(key="title", match=MatchText(text=case_name))])
             limit = top_k * _CHUNK_FETCH_MULTIPLIER
-            raw = _search_qdrant(_get_qdrant_client(), query_vector, name_filter, limit)
+            raw = qdrant_hybrid_search(case_name, name_filter, limit)
         except Exception as exc:
             logger.exception("Qdrant search_by_case_name failed: %s", exc)
             raw = []
@@ -483,8 +529,7 @@ class QdrantSearchService:
         doc_filter = Filter(must=[FieldCondition(key="document_id", match=MatchValue(value=document_id))])
 
         try:
-            query_vector = _embed(question)
-            raw = _search_qdrant(_get_qdrant_client(), query_vector, doc_filter, top_k)
+            raw = qdrant_hybrid_search(question, doc_filter, top_k)
         except Exception as exc:
             logger.warning("Qdrant ask failed: %s", exc)
             raw = []

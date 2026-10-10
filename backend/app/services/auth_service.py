@@ -22,7 +22,9 @@ from sqlalchemy.orm import Session
 from app.db.models import User
 
 # ── JWT config ──────────────────────────────────────────────────────────────
-SECRET_KEY: str = os.getenv("JWT_SECRET_KEY", "changeme-in-production")
+SECRET_KEY: str = os.getenv("JWT_SECRET_KEY")
+if not SECRET_KEY or SECRET_KEY == "changeme-in-production":
+    raise RuntimeError("JWT_SECRET_KEY environment variable is not set or is insecure")
 ALGORITHM: str = os.getenv("JWT_ALGORITHM", "HS256")
 EXPIRY_HOURS: int = int(os.getenv("JWT_EXPIRATION_HOURS", "24"))
 

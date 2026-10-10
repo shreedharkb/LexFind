@@ -7,49 +7,37 @@ import logging
 from pathlib import Path
 
 from dotenv import load_dotenv
-from qdrant_client.http.models import FieldCondition, Filter, Fusion, FusionQuery, MatchValue, Prefetch, SparseVector
+from qdrant_client.http.models import FieldCondition, Filter, MatchValue
 from sqlalchemy import text
 from sqlalchemy.orm import Session
 from typing import List, Dict
 
 from app.agents.nodes._embedder import embed
-from app.agents.nodes._qdrant import COLLECTION_NAME, get_qdrant
 from app.agents.state import LexFindState
 from app.db.models import Document
 from app.db.session import DatabaseSession
-from app.services.qdrant_search_service import _embed_sparse
+from app.services.qdrant_search_service import qdrant_hybrid_search
 
 _dotenv_path = Path(__file__).resolve().parents[4] / ".env"
 load_dotenv(dotenv_path=_dotenv_path, override=False)
 
 logger = logging.getLogger(__name__)
 
-_SYSTEM_PROMPT = (
-    "You are a senior legal assistant. Answer the user's question using "
-    "ONLY the source blocks provided below. Each source block contains "
-    "text from a specific legal case. Cite inline as [Case Name, Year]. "
-    "If the answer cannot be found in the sources, say: "
-    "'I cannot find this information in the attached documents.'"
-)
 
 TOP_K_QDRANT = 8
 TOP_K_PGVECTOR = 8
 
 
 def _search_qdrant_by_doc(db: Session, doc_id: str, question: str, query_vector: List[float]) -> List[Dict]:
-    client = get_qdrant()
     doc_filter = Filter(must=[FieldCondition(key="document_id", match=MatchValue(value=doc_id))])
-    limit = TOP_K_QDRANT * 3
-
-    result = client.query_points(
-        collection_name=COLLECTION_NAME,
-        query=query_vector,
-        query_filter=doc_filter,
+    
+    points = qdrant_hybrid_search(
+        query_text=question,
+        qdrant_filter=doc_filter,
         limit=TOP_K_QDRANT,
-        with_payload=True,
     )
 
-    chunk_ids = [r.payload.get("chunk_id") for r in result.points if r.payload.get("chunk_id")]
+    chunk_ids = [r.payload.get("chunk_id") for r in points if r.payload.get("chunk_id")]
     chunk_texts = {}
     if chunk_ids:
         rows = db.execute(
@@ -70,7 +58,7 @@ def _search_qdrant_by_doc(db: Session, doc_id: str, question: str, query_vector:
             "score": r.score,
             "source": "qdrant",
         }
-        for r in result.points
+        for r in points
     ]
 
 
@@ -121,17 +109,10 @@ def _build_citations(chunks: List[Dict]) -> List[Dict]:
     return citations
 
 
-def _build_context(chunks: List[Dict]) -> str:
-    parts = []
-    for c in chunks:
-        label = f"{c.get('title', 'Unknown')} ({c.get('year', c.get('page_number', ''))})"
-        parts.append(f"Source: {label}\n{c.get('chunk_text', '')}")
-    return "\n\n---\n\n".join(parts)
 
 
 def document_chat_node(state: LexFindState) -> LexFindState:
     question = state["question"]
-    history = state.get("history", [])
     doc_ids = state.get("document_ids", [])
 
     if not doc_ids:

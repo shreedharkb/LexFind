@@ -8,9 +8,8 @@ import os
 from pathlib import Path
 
 from dotenv import load_dotenv
-from groq import Groq
-
 from app.agents.state import LexFindState
+from app.core.llm import get_groq_client
 
 _dotenv_path = Path(__file__).resolve().parents[4] / ".env"
 load_dotenv(dotenv_path=_dotenv_path, override=False)
@@ -42,12 +41,6 @@ Return JSON:
 }}\
 """
 
-def _get_groq_client() -> Groq:
-    api_key = os.getenv("GROQ_API_KEY", "").strip().strip('"').strip("'")
-    if not api_key:
-        raise ValueError("GROQ_API_KEY is not set.")
-    return Groq(api_key=api_key)
-
 
 def classifier_node(state: LexFindState) -> LexFindState:
     explicit_mode = (state.get("explicit_mode") or "auto").lower()
@@ -61,7 +54,8 @@ def classifier_node(state: LexFindState) -> LexFindState:
         return {**state, "is_legal": True, "intent": "corpus_search"}
 
     try:
-        client = _get_groq_client()
+        client = get_groq_client()
+        if not client: raise ValueError("Groq client not configured")
         model = os.getenv("GROQ_MODEL", "openai/gpt-oss-120b")
 
         response = client.chat.completions.create(

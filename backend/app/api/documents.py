@@ -33,7 +33,14 @@ async def upload_document(
     if not file.filename.lower().endswith(".pdf"):
         raise HTTPException(status_code=400, detail="Only PDF files are supported")
 
-    content = await file.read()
+    MAX_FILE_SIZE = 10 * 1024 * 1024  # 10 MB
+    content = await file.read(MAX_FILE_SIZE + 1)
+    
+    if len(content) > MAX_FILE_SIZE:
+        raise HTTPException(status_code=400, detail="File too large (exceeds 10MB)")
+        
+    if not content.startswith(b"%PDF"):
+        raise HTTPException(status_code=400, detail="Invalid PDF file format")
     
     file_hash = doc_repo.sha256_of_bytes(content)
     existing_doc = doc_repo.get_document_by_hash(db, file_hash, uuid.UUID(user_id))
@@ -47,7 +54,7 @@ async def upload_document(
             "message": "Document already exists"
         }
 
-    blob_path = blob_storage_service.upload_pdf(content, file.filename)
+    blob_path = blob_storage_service.upload_pdf(content, user_id)
     
     doc = doc_repo.create_document(
         db=db,

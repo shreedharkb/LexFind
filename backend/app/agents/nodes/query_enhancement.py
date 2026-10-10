@@ -14,11 +14,13 @@ needs_web_search=False. Never crash the pipeline or pass empty string.
 import json
 import logging
 import os
+import re
 from pathlib import Path
 
 from dotenv import load_dotenv
 
 from app.agents.state import LexFindState
+from app.core.llm import get_groq_client
 
 _dotenv_path = Path(__file__).resolve().parents[4] / ".env"
 load_dotenv(dotenv_path=_dotenv_path, override=False)
@@ -59,9 +61,9 @@ Respond with ONLY this JSON — no other text:
 }}"""
 
 _RECENCY_KEYWORDS = {
-    "recent", "latest", "new", "current", "today", "news", "update",
+    "recent", "latest", "current", "today", "news", "update",
     "amendment", "ordinance", "gazette", "notification", "this year",
-    "this month", "2024", "2025", "2026", "recently", "just", "now",
+    "this month", "2024", "2025", "2026", "recently",
     "upcoming", "pending", "introduced", "passed", "enacted",
 }
 
@@ -72,7 +74,7 @@ def query_enhancement_node(state: LexFindState) -> LexFindState:
     intent   = state.get("intent", "corpus")
     history  = state.get("history", [])
 
-    instruction = _DOCUMENT_INSTRUCTION if intent == "document" else _CORPUS_INSTRUCTION
+    instruction = _DOCUMENT_INSTRUCTION if intent == "document_chat" else _CORPUS_INSTRUCTION
 
     history_text = "\n".join(
         f"{m['role'].upper()}: {m['content'][:200]}"
@@ -86,9 +88,8 @@ def query_enhancement_node(state: LexFindState) -> LexFindState:
     )
 
     try:
-        api_key = os.getenv("GROQ_API_KEY", "").strip().strip('"').strip("'")
-        from groq import Groq
-        client = Groq(api_key=api_key)
+        client = get_groq_client()
+        if not client: raise ValueError("Groq client not configured")
         resp = client.chat.completions.create(
             model="openai/gpt-oss-20b",
             messages=[{"role": "user", "content": prompt}],
@@ -103,7 +104,7 @@ def query_enhancement_node(state: LexFindState) -> LexFindState:
     except Exception as exc:
         logger.warning("QueryEnhancement failed (%s) — falling back to raw question", exc)
         enhanced_query   = question
-        needs_web_search = any(kw in question.lower() for kw in _RECENCY_KEYWORDS)
+        needs_web_search = bool(re.search(r'\b(' + '|'.join(re.escape(kw) for kw in _RECENCY_KEYWORDS) + r')\b', question.lower()))
 
     logger.info("QueryEnhancement: '%s' → '%s' (web=%s)", question[:60], enhanced_query[:60], needs_web_search)
 

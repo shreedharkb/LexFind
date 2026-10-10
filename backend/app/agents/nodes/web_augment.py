@@ -55,4 +55,17 @@ def web_augment_node(state: LexFindState) -> LexFindState:
     except Exception as exc:
         logger.warning("WebAugment: unexpected error (%s)", exc)
         web_results = []
-    return {**state, "web_results": web_results}
+        
+    web_citations = []
+    for r in web_results:
+        web_citations.append({
+            "source": "web",
+            "title": r.get("title", ""),
+            "url": r.get("url", ""),
+            "excerpt": r.get("content", "")[:200] + "...",
+            "document_title": r.get("title", ""),
+            "filename": r.get("url", ""),
+        })
+        
+    current_citations = state.get("citations") or []
+    return {**state, "web_results": web_results, "citations": current_citations + web_citations}

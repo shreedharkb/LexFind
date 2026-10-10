@@ -21,9 +21,9 @@ from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, status
 from fastapi.responses import StreamingResponse
-from groq import AsyncGroq
 from sqlalchemy.orm import Session as DBSession
 from starlette.concurrency import run_in_threadpool
+from app.core.llm import get_async_groq_client
 
 from app.api.dependencies.auth import get_current_user
 from app.db.session import DatabaseSession, get_db
@@ -56,9 +56,10 @@ def _clean(text: str) -> str:
 async def _generate_session_title(question: str, answer: str) -> str:
     """Call Groq to generate a concise 4-6 word session title."""
     try:
-        api_key = os.getenv("GROQ_API_KEY", "").strip().strip('"').strip("'")
         model = os.getenv("GROQ_MODEL", "openai/gpt-oss-120b")
-        client = AsyncGroq(api_key=api_key)
+        client = get_async_groq_client()
+        if not client:
+            return question[:40]
         prompt = (
             f"Create a concise 4-6 word title for a legal chat session. "
             f"User asked: \"{question[:200]}\"\n"
@@ -260,12 +261,15 @@ async def send_message(
 
             # Step 2a: Graph produced prompt_messages — stream via AsyncGroq token-by-token.
             if prompt_messages:
-                api_key = os.getenv("GROQ_API_KEY", "").strip().strip('"').strip("'")
                 model   = os.getenv("GROQ_MODEL", "openai/gpt-oss-120b")
                 temperature = final_state.get("llm_temperature") or 0.3
                 max_tokens  = final_state.get("llm_max_tokens")  or 1024
 
-                groq_client = AsyncGroq(api_key=api_key)
+                groq_client = get_async_groq_client()
+                if not groq_client:
+                    yield f"data: {json.dumps({'content': '[Error: LLM not configured]'})}\n\n"
+                    yield "data: [DONE]\n\n"
+                    return
                 stream = await groq_client.chat.completions.create(
                     model=model,
                     messages=prompt_messages,

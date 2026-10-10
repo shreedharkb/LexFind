@@ -10,13 +10,13 @@ import uuid
 from typing import List, Tuple
 
 import fitz  # PyMuPDF
-from groq import Groq
 from langchain_text_splitters import RecursiveCharacterTextSplitter
 
 from app.db.models import DocumentChunk, DocumentEmbedding
 from app.db.session import DatabaseSession
 from app.services.blob_storage_service import blob_storage_service
 from app.services.embedding_service import embed_texts
+from app.core.llm import get_groq_client
 
 logger = logging.getLogger(__name__)
 
@@ -61,6 +61,12 @@ class DocumentProcessingService:
     @staticmethod
     def store_chunks_and_embeddings(document_id: uuid.UUID, chunks: List[Tuple[str, int, int]], db) -> int:
         if not chunks: return 0
+        
+        # Delete old rows first to prevent duplication on retry
+        db.query(DocumentEmbedding).filter(DocumentEmbedding.document_id == document_id).delete(synchronize_session=False)
+        db.query(DocumentChunk).filter(DocumentChunk.document_id == document_id).delete(synchronize_session=False)
+        db.flush()
+        
         embeddings = embed_texts([c[0] for c in chunks])
 
         chunk_records = [
@@ -85,7 +91,8 @@ class DocumentProcessingService:
         if not api_key: return "Summary generation skipped (no API key configured)."
         
         try:
-            client = Groq(api_key=api_key)
+            client = get_groq_client()
+            if not client: raise ValueError("Groq client not configured")
             response = client.chat.completions.create(
                 model=model,
                 messages=[{
