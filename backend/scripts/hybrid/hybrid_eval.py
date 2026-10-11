@@ -63,6 +63,8 @@ OUT_TXT      = OUT_DIR / "hybrid_eval_summary.txt"
 # ── Config ────────────────────────────────────────────────────────────────────
 QDRANT_HOST     = os.getenv("QDRANT_HOST", "localhost")
 QDRANT_PORT     = int(os.getenv("QDRANT_PORT", "6333"))
+QDRANT_URL      = os.getenv("QDRANT_URL", "").strip().rstrip("/")
+QDRANT_API_KEY  = os.getenv("QDRANT_API_KEY", "").strip() or None
 COLLECTION_NAME = os.getenv("QDRANT_COLLECTION", "legal_corpus_hybrid")
 DENSE_MODEL     = "sentence-transformers/all-mpnet-base-v2"
 TOP_K           = 5
@@ -424,8 +426,17 @@ def main():
     print("=" * 61)
 
     # ── Connect ────────────────────────────────────────────────────────────────
-    print(f"\n[1/4] Connecting to Qdrant at {QDRANT_HOST}:{QDRANT_PORT} ...")
-    client = QdrantClient(host=QDRANT_HOST, port=QDRANT_PORT, timeout=120)
+    qdrant_location = QDRANT_URL or f"{QDRANT_HOST}:{QDRANT_PORT}"
+    print(f"\n[1/4] Connecting to Qdrant at {qdrant_location} ...")
+    if QDRANT_URL:
+        client = QdrantClient(url=QDRANT_URL, api_key=QDRANT_API_KEY, timeout=120)
+    else:
+        client = QdrantClient(
+            host=QDRANT_HOST,
+            port=QDRANT_PORT,
+            api_key=QDRANT_API_KEY,
+            timeout=120,
+        )
 
     try:
         info = client.get_collection(COLLECTION_NAME)

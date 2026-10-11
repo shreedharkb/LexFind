@@ -24,11 +24,34 @@ from app.db.models import User
 ALGORITHM: str = os.getenv("JWT_ALGORITHM", "HS256")
 EXPIRY_HOURS: int = int(os.getenv("JWT_EXPIRATION_HOURS", "24"))
 
-def _get_secret_key() -> str:
-    secret = os.getenv("JWT_SECRET_KEY")
-    if not secret or secret == "change_this_in_production" or secret == "changeme-in-production":
-        raise RuntimeError("JWT_SECRET_KEY environment variable is not set or is insecure")
+_MINIMUM_JWT_SECRET_LENGTH = 32
+_INSECURE_SECRET_MARKERS = (
+    "your_secret",
+    "replace_with",
+    "change_this",
+    "changeme",
+    "example",
+)
+
+def validate_jwt_secret() -> str:
+    """Return a safe JWT signing secret or fail before serving requests."""
+    secret = os.getenv("JWT_SECRET_KEY", "").strip()
+    normalized_secret = secret.casefold()
+    if (
+        len(secret) < _MINIMUM_JWT_SECRET_LENGTH
+        or any(marker in normalized_secret for marker in _INSECURE_SECRET_MARKERS)
+    ):
+        raise RuntimeError(
+            "JWT_SECRET_KEY must be a non-placeholder secret of at least "
+            f"{_MINIMUM_JWT_SECRET_LENGTH} characters. Generate one with "
+            "`openssl rand -hex 32`."
+        )
     return secret
+
+
+def _get_secret_key() -> str:
+    """Backward-compatible internal accessor for the validated signing key."""
+    return validate_jwt_secret()
 
 
 class AuthenticationError(Exception):

@@ -118,6 +118,25 @@ def test_hybrid_search_falls_back_to_dense_after_timeout(monkeypatch):
     }
 
 
+def test_hybrid_search_uses_configured_qdrant_url_and_api_key(monkeypatch):
+    response = MagicMock()
+    response.json.return_value = {"result": {"points": []}}
+
+    monkeypatch.setattr(search_service, "QDRANT_URL", "https://demo.cloud.qdrant.io")
+    monkeypatch.setattr(search_service, "QDRANT_API_KEY", "qdrant-api-key")
+    monkeypatch.setattr(search_service, "_embed", lambda _: [0.1, 0.2])
+    monkeypatch.setattr(search_service, "_embed_sparse", lambda _: None)
+    post = MagicMock(return_value=response)
+    monkeypatch.setattr(search_service.requests, "post", post)
+
+    search_service.qdrant_hybrid_search("constitutional rights", None, 5)
+
+    assert post.call_args.args[0] == (
+        "https://demo.cloud.qdrant.io/collections/legal_corpus_hybrid/points/query"
+    )
+    assert post.call_args.kwargs["headers"] == {"api-key": "qdrant-api-key"}
+
+
 def test_search_service_construction_does_not_load_models(monkeypatch):
     model_loader = MagicMock()
     qdrant_loader = MagicMock()
@@ -145,6 +164,29 @@ def test_keyword_search_uses_sparse_vectors(monkeypatch):
 
     assert response.results == [result]
     assert sparse_search.call_args.kwargs["mode"] == "sparse"
+
+
+def test_hybrid_search_orders_results_by_displayed_similarity(monkeypatch):
+    service = search_service.QdrantSearchService()
+    lower_similarity = _case_result("document-low")
+    lower_similarity.semantic_score = 0.71
+    higher_similarity = _case_result("document-high")
+    higher_similarity.semantic_score = 0.92
+
+    monkeypatch.setattr(search_service, "qdrant_hybrid_search", MagicMock(return_value=[]))
+    monkeypatch.setattr(search_service, "_embed", lambda _: [0.1, 0.2])
+    monkeypatch.setattr(
+        search_service,
+        "_qdrant_hits_to_case_results",
+        lambda *_args, **_kwargs: [lower_similarity, higher_similarity],
+    )
+
+    response = service.search(MagicMock(), "privacy rights", top_k=2)
+
+    assert [result.document_id for result in response.results] == [
+        "document-high",
+        "document-low",
+    ]
 
 
 def test_name_search_uses_database_and_escapes_like_wildcards():

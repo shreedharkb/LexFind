@@ -49,6 +49,8 @@ logger = logging.getLogger(__name__)
 # ── Config pulled from env ─────────────────────────────────────────────────────
 QDRANT_HOST: str = os.getenv("QDRANT_HOST", "localhost")
 QDRANT_PORT: int = int(os.getenv("QDRANT_PORT", "6333"))
+QDRANT_URL: str = os.getenv("QDRANT_URL", "").strip().rstrip("/")
+QDRANT_API_KEY: str = os.getenv("QDRANT_API_KEY", "").strip()
 QDRANT_COLLECTION: str = os.getenv("QDRANT_COLLECTION", "legal_corpus_hybrid")
 EMBEDDING_MODEL: str = "sentence-transformers/all-mpnet-base-v2"
 
@@ -77,9 +79,33 @@ def _get_embedding_model() -> SentenceTransformer:
 def _get_qdrant_client() -> QdrantClient:
     global _qdrant_client
     if _qdrant_client is None:
-        logger.info("Connecting to Qdrant at %s:%d", QDRANT_HOST, QDRANT_PORT)
-        _qdrant_client = QdrantClient(host=QDRANT_HOST, port=QDRANT_PORT, timeout=120)
+        if QDRANT_URL:
+            logger.info("Connecting to Qdrant at %s", QDRANT_URL)
+            _qdrant_client = QdrantClient(
+                url=QDRANT_URL,
+                api_key=QDRANT_API_KEY or None,
+                timeout=120,
+            )
+        else:
+            logger.info("Connecting to Qdrant at %s:%d", QDRANT_HOST, QDRANT_PORT)
+            _qdrant_client = QdrantClient(
+                host=QDRANT_HOST,
+                port=QDRANT_PORT,
+                api_key=QDRANT_API_KEY or None,
+                timeout=120,
+            )
     return _qdrant_client
+
+
+def _qdrant_rest_url() -> str:
+    """Return the Qdrant REST URL for raw hybrid-query requests."""
+    base_url = QDRANT_URL or f"http://{QDRANT_HOST}:{QDRANT_PORT}"
+    return f"{base_url}/collections/{QDRANT_COLLECTION}/points/query"
+
+
+def _qdrant_request_headers() -> Optional[Dict[str, str]]:
+    """Supply the Qdrant Cloud API-key header only when configured."""
+    return {"api-key": QDRANT_API_KEY} if QDRANT_API_KEY else None
 
 
 def _get_bm25_model():
@@ -427,11 +453,12 @@ def qdrant_hybrid_search(
             sparse_prefetch["filter"] = filter_data
         body["prefetch"].append(sparse_prefetch)
 
-    url = f"http://{QDRANT_HOST}:{QDRANT_PORT}/collections/{QDRANT_COLLECTION}/points/query"
+    url = _qdrant_rest_url()
     try:
         response = requests.post(
             url,
             json=body,
+            headers=_qdrant_request_headers(),
             timeout=(3, _QDRANT_QUERY_TIMEOUT_SECONDS),
         )
         response.raise_for_status()
@@ -457,6 +484,7 @@ def qdrant_hybrid_search(
         response = requests.post(
             url,
             json=dense_body,
+            headers=_qdrant_request_headers(),
             timeout=(3, _QDRANT_QUERY_TIMEOUT_SECONDS),
         )
         response.raise_for_status()
@@ -544,12 +572,20 @@ class QdrantSearchService:
             query, qdrant_filter, limit, include_dense_vectors=True,
         )
 
-        # Keep RRF for ordering, but supply real dense cosine similarity for
-        # the result badge. The embedding model is already warm for the RRF
-        # request, so this small local encode does not create another network
-        # round trip.
+        # The search UI displays dense cosine similarity as a percentage. Sort
+        # by that same value so the visible percentage and top-to-bottom rank
+        # never disagree. RRF is still used to generate the candidate set.
+        # The embedding model is already warm for the RRF request, so this
+        # small local encode does not create another network round trip.
         results = _qdrant_hits_to_case_results(
             raw, db, top_k=top_k, dense_query=_embed(query),
+        )
+        results.sort(
+            key=lambda result: (
+                result.semantic_score is not None,
+                result.semantic_score if result.semantic_score is not None else result.score,
+            ),
+            reverse=True,
         )
         return SearchResponse(
             query=query, total_results=len(results), results=results,

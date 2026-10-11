@@ -55,11 +55,14 @@ def create_app() -> FastAPI:
     env_path = Path(__file__).resolve().parent.parent / ".env"
     try:
         load_dotenv(dotenv_path=env_path, override=False)
-        key = os.environ.get("GROQ_API_KEY", "")
-        masked = f"{key[:4]}...{key[-4:]}" if key and len(key) >= 8 else "(not set)"
-        print(f"Loaded env from {env_path} | GROQ_API_KEY={masked}")
+        logger.info("Loaded environment from %s", env_path)
     except Exception as err:
-        print(f"Warning: could not load .env ({env_path}): {err}")
+        logger.warning("Could not load .env (%s): %s", env_path, err)
+
+    # Validate the key at startup so a configuration mistake cannot surface
+    # later as an unexpected login failure.
+    from app.services.auth_service import validate_jwt_secret
+    validate_jwt_secret()
 
     app = FastAPI(
         title="LexFind API",

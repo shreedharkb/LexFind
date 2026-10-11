@@ -32,6 +32,8 @@ from qdrant_client.models import Filter, FieldCondition, MatchValue, Range
 DATABASE_URL   = os.getenv("DATABASE_URL", "")
 QDRANT_HOST    = os.getenv("QDRANT_HOST", "localhost")
 QDRANT_PORT    = int(os.getenv("QDRANT_PORT", "6333"))
+QDRANT_URL     = os.getenv("QDRANT_URL", "").strip().rstrip("/")
+QDRANT_API_KEY = os.getenv("QDRANT_API_KEY", "").strip() or None
 COLLECTION     = "legal_corpus"
 MODEL_NAME     = "sentence-transformers/all-mpnet-base-v2"
 
@@ -181,7 +183,15 @@ def main():
     print("  LexFind — Ingestion Verification")
     print("=" * 60)
 
-    client = QdrantClient(host=QDRANT_HOST, port=QDRANT_PORT, timeout=30)
+    if QDRANT_URL:
+        client = QdrantClient(url=QDRANT_URL, api_key=QDRANT_API_KEY, timeout=30)
+    else:
+        client = QdrantClient(
+            host=QDRANT_HOST,
+            port=QDRANT_PORT,
+            api_key=QDRANT_API_KEY,
+            timeout=30,
+        )
     engine = create_engine(DATABASE_URL, pool_pre_ping=True)
 
     check_collection(client)

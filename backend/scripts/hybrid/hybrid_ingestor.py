@@ -56,6 +56,8 @@ from fastembed import SparseTextEmbedding
 DATABASE_URL    = os.getenv("DATABASE_URL", "")
 QDRANT_HOST     = os.getenv("QDRANT_HOST", "localhost")
 QDRANT_PORT     = int(os.getenv("QDRANT_PORT", "6333"))
+QDRANT_URL      = os.getenv("QDRANT_URL", "").strip().rstrip("/")
+QDRANT_API_KEY  = os.getenv("QDRANT_API_KEY", "").strip() or None
 COLLECTION_NAME = "legal_corpus_hybrid"
 BATCH_SIZE      = 5_000   # rows fetched from Postgres + sparse vectors held in RAM at once
 UPSERT_SIZE     = 256     # Qdrant upsert sub-batch (avoid HTTP payload limits)
@@ -310,8 +312,17 @@ def main():
     bm25_model = load_bm25_model()
 
     # ── Connect to Qdrant ──────────────────────────────────────────────────────
-    print(f"\n[3/5] Connecting to Qdrant at {QDRANT_HOST}:{QDRANT_PORT} ...")
-    client = QdrantClient(host=QDRANT_HOST, port=QDRANT_PORT, timeout=300)
+    qdrant_location = QDRANT_URL or f"{QDRANT_HOST}:{QDRANT_PORT}"
+    print(f"\n[3/5] Connecting to Qdrant at {qdrant_location} ...")
+    if QDRANT_URL:
+        client = QdrantClient(url=QDRANT_URL, api_key=QDRANT_API_KEY, timeout=300)
+    else:
+        client = QdrantClient(
+            host=QDRANT_HOST,
+            port=QDRANT_PORT,
+            api_key=QDRANT_API_KEY,
+            timeout=300,
+        )
 
     try:
         coll_info = client.get_collection(COLLECTION_NAME)

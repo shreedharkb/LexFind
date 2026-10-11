@@ -24,5 +24,11 @@ def get_qdrant() -> QdrantClient:
         host = os.getenv("QDRANT_HOST", "localhost")
         port = int(os.getenv("QDRANT_PORT", 6333))
         logger.info("Initialising Qdrant client → %s:%s", host, port)
-        _client = QdrantClient(host=host, port=port)
+        url = os.getenv("QDRANT_URL", "").strip().rstrip("/")
+        api_key = os.getenv("QDRANT_API_KEY", "").strip() or None
+        if url:
+            logger.info("Using configured Qdrant URL: %s", url)
+            _client = QdrantClient(url=url, api_key=api_key)
+        else:
+            _client = QdrantClient(host=host, port=port, api_key=api_key)
     return _client

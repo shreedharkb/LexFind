@@ -28,7 +28,7 @@ services:
     container_name: lexfind_qdrant
     restart: always
     ports:
-      - "6333:6333"
+      - "127.0.0.1:6333:6333"
     volumes:
       - lexfind_qdrant_data:/qdrant/storage
     networks:
@@ -40,7 +40,7 @@ services:
     container_name: lexfind_db
     restart: always
     ports:
-      - "5433:5432"           # host 5433 to avoid clashing with local Postgres
+      - "127.0.0.1:5433:5432" # host 5433 to avoid clashing with local Postgres
     environment:
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: postgres
@@ -61,8 +61,8 @@ services:
     container_name: lexfind_rabbitmq
     restart: always
     ports:
-      - "5672:5672"           # AMQP
-      - "15672:15672"         # Management UI → http://localhost:15672
+      - "127.0.0.1:5672:5672" # AMQP
+      - "127.0.0.1:15672:15672" # Management UI → http://localhost:15672
     environment:
       RABBITMQ_DEFAULT_USER: guest
       RABBITMQ_DEFAULT_PASS: guest
@@ -83,7 +83,30 @@ services:
     container_name: lexfind_redis
     restart: always
     ports:
-      - "6379:6379"
+      - "127.0.0.1:6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+    networks:
+      - lexfind_net
+
+  # ── Database migrations ──────────────────────────────────────────────────
+  migrate:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: lexfind_migrate
+    restart: "no"
+    command: ["alembic", "upgrade", "head"]
+    env_file:
+      - ./backend/.env
+    environment:
+      DATABASE_URL: postgresql://postgres:postgres@db:5432/lexfind
+    depends_on:
+      db:
+        condition: service_healthy
     networks:
       - lexfind_net
 
@@ -102,6 +125,12 @@ services:
       # Inside Compose the Qdrant container is reachable by its service name.
       # Local uvicorn uses backend/.env's localhost value instead.
       QDRANT_HOST: qdrant
+      QDRANT_URL: ""
+      DATABASE_URL: postgresql://postgres:postgres@db:5432/lexfind
+      CELERY_BROKER_URL: amqp://guest:guest@rabbitmq:5672//
+      CELERY_RESULT_BACKEND: db+postgresql://postgres:postgres@db:5432/lexfind
+      REDIS_URL: redis://redis:6379/0
+      USE_LOCAL_FILES: "true"
     volumes:
       - ./backend/data:/app/data
       - ./backend/scripts:/app/scripts
@@ -111,6 +140,10 @@ services:
         condition: service_healthy
       rabbitmq:
         condition: service_healthy
+      redis:
+        condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8000/api/health"]
       interval: 30s
@@ -138,6 +171,11 @@ services:
       - ./backend/.env
     environment:
       QDRANT_HOST: qdrant
+      QDRANT_URL: ""
+      DATABASE_URL: postgresql://postgres:postgres@db:5432/lexfind
+      CELERY_BROKER_URL: amqp://guest:guest@rabbitmq:5672//
+      CELERY_RESULT_BACKEND: db+postgresql://postgres:postgres@db:5432/lexfind
+      USE_LOCAL_FILES: "true"
     volumes:
       - ./backend/data:/app/data
       - lexfind_tmp_uploads:/tmp/confidential_uploads
@@ -146,6 +184,8 @@ services:
         condition: service_healthy
       rabbitmq:
         condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
     healthcheck:
       test: ["CMD", "celery", "-A", "app.workers.celery_app", "inspect", "ping"]
       interval: 30s

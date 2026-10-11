@@ -8,7 +8,7 @@
 | Node.js | 18+ |
 | Docker + Docker Compose | Latest |
 | Groq API Key | From console.groq.com |
-| Qdrant | Running on port 6333 |
+| Qdrant | Started by Docker Compose on port 6333 |
 
 ---
 
@@ -21,23 +21,7 @@ cd LexFind
 
 ---
 
-## 2. Start Infrastructure Services
-
-PostgreSQL (database) and RabbitMQ (task broker) are managed by Docker Compose.
-
-```bash
-docker compose up db rabbitmq -d
-```
-
-Qdrant must be running separately. To run it in Docker:
-
-```bash
-docker run -p 6333:6333 qdrant/qdrant
-```
-
----
-
-## 3. Backend Setup
+## 2. Configure the Backend
 
 ```bash
 cd backend
@@ -55,19 +39,19 @@ pip install -r requirements.txt
 
 ---
 
-## 4. Configure Environment
+From `backend/`, copy the example configuration and edit `backend/.env`:
 
 ```bash
 cp .env.example .env
 ```
 
-Edit `backend/.env`:
-
 ```env
-DATABASE_URL=postgresql://postgres:password@localhost:5432/LexFind
-RABBITMQ_URL=amqp://guest:guest@localhost:5672/
+DATABASE_URL=postgresql://postgres:postgres@localhost:5433/lexfind
+CELERY_BROKER_URL=amqp://guest:guest@localhost:5672//
+CELERY_RESULT_BACKEND=db+postgresql://postgres:postgres@localhost:5433/lexfind
+REDIS_URL=redis://localhost:6379/0
 GROQ_API_KEY=gsk_...
-SECRET_KEY=your-random-secret-key
+JWT_SECRET_KEY=replace_with_a_random_64_character_hex_secret
 
 # Qdrant (defaults shown)
 QDRANT_HOST=localhost
@@ -76,14 +60,26 @@ QDRANT_PORT=6333
 # LLM model (default shown)
 GROQ_MODEL=llama-3.3-70b-versatile
 
-# Azure Blob Storage (optional — omit to use local storage)
-AZURE_STORAGE_CONNECTION_STRING=
-AZURE_DATA_CONTAINER=data
+# Keep uploads on the local filesystem for the demo.
+USE_LOCAL_FILES=true
 ```
 
 ---
 
-## 5. Run Database Migrations
+## 3. Start the Local Stack (recommended)
+
+PostgreSQL, RabbitMQ, Redis, Qdrant, the API, and the Celery worker are managed
+by Docker Compose. Run this from the repository root after configuring `backend/.env`:
+
+```bash
+docker compose up -d --build
+```
+
+This automatically runs `alembic upgrade head` before starting the API and worker.
+
+---
+
+## 4. Direct Backend Run (alternative)
 
 ```bash
 alembic upgrade head
@@ -93,7 +89,7 @@ This creates all tables: `users`, `assistant_sessions`, `messages`, `documents`,
 
 ---
 
-## 6. Start the API Server
+## 5. Start the API Server
 
 ```bash
 uvicorn app.main:create_app --factory --host 0.0.0.0 --port 8000 --reload
@@ -103,7 +99,7 @@ API documentation available at `http://localhost:8000/docs`.
 
 ---
 
-## 7. Start the Celery Worker
+## 6. Start the Celery Worker
 
 Open a separate terminal (with the venv activated):
 
@@ -111,11 +107,11 @@ Open a separate terminal (with the venv activated):
 celery -A app.workers.celery_app worker --loglevel=info -Q LexFind_documents
 ```
 
-The Celery worker handles asynchronous PDF processing (text extraction, chunking, embedding generation). It must be running for private PDF uploads to become ready for chat.
+The Celery worker handles asynchronous PDF processing (text extraction, chunking, embedding generation). It must be running for private PDF uploads to become ready for chat. `docker compose up -d --build` starts it automatically.
 
 ---
 
-## 8. Frontend Setup
+## 7. Frontend Setup
 
 ```bash
 cd frontend
@@ -152,7 +148,7 @@ curl http://localhost:6333/collections
 
 ## Qdrant Corpus Loading
 
-The 46k legal corpus must be pre-loaded into Qdrant before search and corpus chat work. The collection is named `legal_corpus` and must contain documents with the following payload schema:
+The legal corpus must be pre-loaded into Qdrant before search and corpus chat work. The active collection is named `legal_corpus_hybrid`, with named `dense` and `sparse` vectors, and contains the following payload schema:
 
 | Field | Type | Description |
 |---|---|---|
@@ -174,12 +170,6 @@ Payload indexes must exist on: `court`, `year`, `state`, `case_type`, `section_t
 
 ---
 
-## Production Deployment
+## Deployment
 
-The current production deployment uses:
-- **Azure VM** for FastAPI and Celery
-- **Azure Static Web Apps** for the React frontend
-- **Azure Blob Storage** for PDF file storage
-- **Docker Compose** for local orchestration of Postgres and RabbitMQ
-
-Nginx is used as a reverse proxy on the Azure VM to forward traffic to the Uvicorn process.
+Deployment is intentionally deferred. The currently supported workflow is the local Docker Compose stack above.

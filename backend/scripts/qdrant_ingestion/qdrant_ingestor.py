@@ -55,6 +55,8 @@ from qdrant_client.models import (
 DATABASE_URL      = os.getenv("DATABASE_URL", "")
 QDRANT_HOST       = os.getenv("QDRANT_HOST", "localhost")
 QDRANT_PORT       = int(os.getenv("QDRANT_PORT", "6333"))
+QDRANT_URL        = os.getenv("QDRANT_URL", "").strip().rstrip("/")
+QDRANT_API_KEY    = os.getenv("QDRANT_API_KEY", "").strip() or None
 COLLECTION_NAME   = "legal_corpus"
 VECTOR_SIZE       = 768
 UPSERT_BATCH_SIZE = 1024  # Increased from 128 for much faster ingestion on VM
@@ -277,8 +279,17 @@ def main():
     logger.info(f"Loaded {len(chunk_ids):,} chunk IDs.")
 
     # ── Qdrant client ──────────────────────────────────────────────────────────
-    logger.info(f"Connecting to Qdrant at {QDRANT_HOST}:{QDRANT_PORT} ...")
-    client = QdrantClient(host=QDRANT_HOST, port=QDRANT_PORT, timeout=300)  # 5min for HNSW indexing periods
+    qdrant_location = QDRANT_URL or f"{QDRANT_HOST}:{QDRANT_PORT}"
+    logger.info(f"Connecting to Qdrant at {qdrant_location} ...")
+    if QDRANT_URL:
+        client = QdrantClient(url=QDRANT_URL, api_key=QDRANT_API_KEY, timeout=300)
+    else:
+        client = QdrantClient(
+            host=QDRANT_HOST,
+            port=QDRANT_PORT,
+            api_key=QDRANT_API_KEY,
+            timeout=300,
+        )  # 5min for HNSW indexing periods
     setup_collection(client, recreate=args.recreate_collection)
 
     # ── Postgres engine ────────────────────────────────────────────────────────
