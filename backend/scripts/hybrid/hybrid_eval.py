@@ -63,7 +63,7 @@ OUT_TXT      = OUT_DIR / "hybrid_eval_summary.txt"
 # ── Config ────────────────────────────────────────────────────────────────────
 QDRANT_HOST     = os.getenv("QDRANT_HOST", "localhost")
 QDRANT_PORT     = int(os.getenv("QDRANT_PORT", "6333"))
-COLLECTION_NAME = "legal_corpus"
+COLLECTION_NAME = os.getenv("QDRANT_COLLECTION", "legal_corpus_hybrid")
 DENSE_MODEL     = "sentence-transformers/all-mpnet-base-v2"
 TOP_K           = 5
 OVER_FETCH      = TOP_K * 10   # over-fetch to allow dedup by filename

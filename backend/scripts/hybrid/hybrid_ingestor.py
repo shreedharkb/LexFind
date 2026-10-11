@@ -56,7 +56,7 @@ from fastembed import SparseTextEmbedding
 DATABASE_URL    = os.getenv("DATABASE_URL", "")
 QDRANT_HOST     = os.getenv("QDRANT_HOST", "localhost")
 QDRANT_PORT     = int(os.getenv("QDRANT_PORT", "6333"))
-COLLECTION_NAME = "legal_corpus"
+COLLECTION_NAME = "legal_corpus_hybrid"
 BATCH_SIZE      = 5_000   # rows fetched from Postgres + sparse vectors held in RAM at once
 UPSERT_SIZE     = 256     # Qdrant upsert sub-batch (avoid HTTP payload limits)
 

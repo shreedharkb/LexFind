@@ -8,7 +8,7 @@ Uses hybrid search with named vectors:
   - "sparse" vector (BM25 via fastembed)
   - RRF fusion to combine both
 
-This matches the collection format created by the JurisFind/LexFind ingestion
+This matches the collection format created by the LexFind ingestion
 pipeline. All queries go through query_points() with Prefetch + FusionQuery.
 """
 
@@ -21,15 +21,12 @@ from collections import defaultdict
 from typing import Dict, List, Optional
 
 import numpy as np
+import requests
 from qdrant_client import QdrantClient
 from qdrant_client.models import (
     FieldCondition,
     Filter,
-    Fusion,
-    FusionQuery,
-    MatchText,
     MatchValue,
-    Prefetch,
     Range,
     ScoredPoint,
     SparseVector,
@@ -52,16 +49,20 @@ logger = logging.getLogger(__name__)
 # ── Config pulled from env ─────────────────────────────────────────────────────
 QDRANT_HOST: str = os.getenv("QDRANT_HOST", "localhost")
 QDRANT_PORT: int = int(os.getenv("QDRANT_PORT", "6333"))
-QDRANT_COLLECTION: str = os.getenv("QDRANT_COLLECTION", "legal_corpus")
+QDRANT_COLLECTION: str = os.getenv("QDRANT_COLLECTION", "legal_corpus_hybrid")
 EMBEDDING_MODEL: str = "sentence-transformers/all-mpnet-base-v2"
 
 _CHUNK_FETCH_MULTIPLIER: int = 10
+_QDRANT_QUERY_TIMEOUT_SECONDS: float = float(
+    os.getenv("QDRANT_QUERY_TIMEOUT_SECONDS", "12")
+)
 
 # ── Module-level singletons ───────────────────────────────────────────────────
 
 _embedding_model: Optional[SentenceTransformer] = None
 _qdrant_client: Optional[QdrantClient] = None
 _bm25_model = None  # Lazy-loaded
+_bm25_model_load_attempted = False
 
 
 def _get_embedding_model() -> SentenceTransformer:
@@ -83,8 +84,11 @@ def _get_qdrant_client() -> QdrantClient:
 
 def _get_bm25_model():
     """Lazy-load the BM25 sparse model."""
-    global _bm25_model
+    global _bm25_model, _bm25_model_load_attempted
     if _bm25_model is None:
+        if _bm25_model_load_attempted:
+            return None
+        _bm25_model_load_attempted = True
         try:
             from fastembed import SparseTextEmbedding
             logger.info("Loading BM25 sparse model (fastembed) ...")
@@ -217,6 +221,7 @@ def _meta_from_payload(payload: dict) -> dict:
 def _qdrant_hits_to_case_results(
     hits: List[ScoredPoint], db: Session,
     exclude_document_id: Optional[str] = None, top_k: int = 10,
+    dense_query: Optional[List[float]] = None,
 ) -> List[CaseResult]:
     doc_chunks: Dict[str, List[ScoredPoint]] = defaultdict(list)
     for hit in hits:
@@ -257,6 +262,24 @@ def _qdrant_hits_to_case_results(
         else:
             meta = pg_meta.get(doc_id, _meta_from_payload(first_payload))
 
+        # Hybrid RRF scores represent rank fusion, not cosine similarity.  If
+        # the hybrid request included dense vectors, expose the best true dense
+        # cosine score for the UI's percentage badge while retaining RRF for
+        # ordering the results.
+        semantic_scores = []
+        if dense_query is not None:
+            for hit in hlist:
+                vector = getattr(hit, "vector", None)
+                if isinstance(vector, dict):
+                    vector = vector.get("dense")
+                if vector is not None:
+                    try:
+                        semantic_scores.append(
+                            float(np.dot(np.asarray(vector), np.asarray(dense_query)))
+                        )
+                    except (TypeError, ValueError):
+                        pass
+
         chunk_results = [
             ChunkResult(
                 chunk_id=(cid := (h.payload or {}).get("chunk_id", str(h.id))),
@@ -274,31 +297,206 @@ def _qdrant_hits_to_case_results(
             citation=meta.get("citation"), judges=meta.get("judges") or [],
             case_type=meta.get("case_type"), state=meta.get("state"),
             score=round(max(h.score for h in hlist), 6),
+            semantic_score=round(max(semantic_scores), 6) if semantic_scores else None,
             top_chunk=chunk_results[0], all_chunks=chunk_results,
         ))
     return results
 
 
-# ── Vector search (single unnamed vector collection) ──────────────────────────
+def _search_by_case_name_in_database(
+    db: Session, case_name: str, top_k: int,
+) -> List[CaseResult]:
+    """Find cases by title or party name without requiring a Qdrant text index."""
+    escape_char = chr(92)
+    escaped_name = (
+        case_name.replace(escape_char, escape_char * 2)
+        .replace("%", f"{escape_char}%")
+        .replace("_", f"{escape_char}_")
+    )
+    params = {
+        "exact_name": case_name,
+        "prefix": f"{escaped_name}%",
+        "pattern": f"%{escaped_name}%",
+        "top_k": top_k,
+    }
+    rows = db.execute(
+        text("""
+            SELECT
+                ld.id::text, ld.title, ld.petitioner, ld.respondent, ld.court,
+                ld.year, ld.citation, ld.judges, ld.case_type, ld.state,
+                lc.id::text, lc.chunk_text, lc.chunk_index, lc.section_type
+            FROM legal_documents ld
+            LEFT JOIN LATERAL (
+                SELECT id, chunk_text, chunk_index, section_type
+                FROM legal_chunks
+                WHERE document_id = ld.id
+                ORDER BY chunk_index
+                LIMIT 1
+            ) lc ON TRUE
+            WHERE COALESCE(ld.title, '') ILIKE :pattern ESCAPE CHR(92)
+               OR COALESCE(ld.petitioner, '') ILIKE :pattern ESCAPE CHR(92)
+               OR COALESCE(ld.respondent, '') ILIKE :pattern ESCAPE CHR(92)
+            ORDER BY CASE
+                WHEN LOWER(COALESCE(ld.title, '')) = LOWER(:exact_name) THEN 0
+                WHEN LOWER(COALESCE(ld.petitioner, '')) = LOWER(:exact_name)
+                  OR LOWER(COALESCE(ld.respondent, '')) = LOWER(:exact_name) THEN 1
+                WHEN COALESCE(ld.title, '') ILIKE :prefix ESCAPE CHR(92) THEN 2
+                ELSE 3
+            END, ld.title NULLS LAST
+            LIMIT :top_k
+        """),
+        params,
+    ).fetchall()
 
-def qdrant_hybrid_search(query_text: str, qdrant_filter: Optional[Filter], limit: int) -> List[ScoredPoint]:
-    """
-    Shared helper for semantic search.
-    Since the deployed collection uses unnamed vectors, hybrid search (RRF) is not supported.
-    Falls back to standard semantic vector search.
-    """
-    client = _get_qdrant_client()
-    return client.query_points(
+    results = []
+    for row in rows:
+        chunk_id = row[10] or row[0]
+        chunk = ChunkResult(
+            chunk_id=chunk_id,
+            chunk_text=row[11] or "",
+            chunk_index=row[12] or 0,
+            section_type=row[13] or "unknown",
+            score=1.0,
+        )
+        results.append(CaseResult(
+            document_id=row[0], title=row[1], petitioner=row[2], respondent=row[3],
+            court=row[4], year=row[5], citation=row[6], judges=row[7] or [],
+            case_type=row[8], state=row[9], score=1.0,
+            top_chunk=chunk, all_chunks=[chunk],
+        ))
+    return results
+
+
+# ── Vector search (named dense + sparse vector collection) ────────────────────
+
+def _qdrant_filter_to_dict(qfilter: Optional[Filter]) -> Optional[dict]:
+    """Convert the simple filters produced by _build_filter to REST JSON."""
+    if not qfilter:
+        return None
+
+    # We only use simple must/match/range in _build_filter
+    must_list = []
+    for cond in (qfilter.must or []):
+        match = getattr(cond, "match", None)
+        if match and getattr(match, "value", None) is not None:
+            must_list.append({"key": cond.key, "match": {"value": match.value}})
+        elif match and getattr(match, "text", None):
+            must_list.append({"key": cond.key, "match": {"text": match.text}})
+        elif hasattr(cond, "range") and cond.range:
+            must_list.append({
+                "key": cond.key,
+                "range": {"gte": cond.range.gte, "lte": cond.range.lte},
+            })
+    if not must_list:
+        return None
+    return {"must": must_list}
+
+def qdrant_hybrid_search(
+    query_text: str,
+    qdrant_filter: Optional[Filter],
+    limit: int,
+    include_dense_vectors: bool = False,
+) -> List[ScoredPoint]:
+    """Run a dense+sparse RRF search through Qdrant's REST query endpoint."""
+    dense_query = _embed(query_text)
+    sparse_vec = _embed_sparse(query_text)
+
+    body = {
+        "prefetch": [{
+            "query": dense_query,
+            "using": "dense",
+            "limit": limit,
+        }],
+        "query": {"fusion": "rrf"},
+        "limit": limit,
+        "with_payload": True,
+    }
+    if include_dense_vectors:
+        body["with_vector"] = ["dense"]
+    filter_data = _qdrant_filter_to_dict(qdrant_filter)
+    if filter_data:
+        body["prefetch"][0]["filter"] = filter_data
+
+    if sparse_vec is not None:
+        sparse_prefetch = {
+            "query": {"indices": sparse_vec.indices, "values": sparse_vec.values},
+            "using": "sparse",
+            "limit": limit,
+        }
+        if filter_data:
+            sparse_prefetch["filter"] = filter_data
+        body["prefetch"].append(sparse_prefetch)
+
+    url = f"http://{QDRANT_HOST}:{QDRANT_PORT}/collections/{QDRANT_COLLECTION}/points/query"
+    try:
+        response = requests.post(
+            url,
+            json=body,
+            timeout=(3, _QDRANT_QUERY_TIMEOUT_SECONDS),
+        )
+        response.raise_for_status()
+        points = response.json().get("result", {}).get("points", [])
+    except requests.Timeout:
+        # RRF can be expensive while Qdrant is indexing a large collection.
+        # Return useful semantic results instead of leaving the search page
+        # waiting indefinitely.
+        logger.warning(
+            "Hybrid Qdrant query timed out after %ss; falling back to dense search.",
+            _QDRANT_QUERY_TIMEOUT_SECONDS,
+        )
+        dense_body = {
+            "query": dense_query,
+            "using": "dense",
+            "limit": limit,
+            "with_payload": True,
+        }
+        if include_dense_vectors:
+            dense_body["with_vector"] = ["dense"]
+        if filter_data:
+            dense_body["filter"] = filter_data
+        response = requests.post(
+            url,
+            json=dense_body,
+            timeout=(3, _QDRANT_QUERY_TIMEOUT_SECONDS),
+        )
+        response.raise_for_status()
+        points = response.json().get("result", {}).get("points", [])
+    return [
+        ScoredPoint(
+            id=point["id"],
+            version=point.get("version", 0),
+            score=point["score"],
+            payload=point.get("payload", {}),
+            vector=point.get("vector"),
+        )
+        for point in points
+    ]
+
+def qdrant_search_by_mode(query_text: str, qdrant_filter: Optional[Filter], limit: int, mode: str = "hybrid") -> List[ScoredPoint]:
+    """Helper for dense, sparse, or hybrid routing (used by re-retriever)."""
+    if mode == "hybrid":
+        return qdrant_hybrid_search(query_text, qdrant_filter, limit)
+
+    if mode == "sparse":
+        query = _embed_sparse(query_text)
+        if query is None:
+            logger.warning("Sparse search requested but the BM25 model is unavailable; using dense search.")
+            query = _embed(query_text)
+            using = "dense"
+        else:
+            using = "sparse"
+    else:  # dense
+        query = _embed(query_text)
+        using = "dense"
+
+    return _get_qdrant_client().query_points(
         collection_name=QDRANT_COLLECTION,
-        query=_embed(query_text),
+        query=query,
+        using=using,
         query_filter=qdrant_filter,
         limit=limit,
         with_payload=True,
     ).points
-
-def qdrant_search_by_mode(query_text: str, qdrant_filter: Optional[Filter], limit: int, mode: str = "hybrid") -> List[ScoredPoint]:
-    """Helper for dense search. Unnamed collection means all modes just use standard search."""
-    return qdrant_hybrid_search(query_text, qdrant_filter, limit)
 
 
 
@@ -308,12 +506,9 @@ class QdrantSearchService:
     """Qdrant-backed search service using hybrid named-vector search."""
 
     def __init__(self) -> None:
-        try:
-            _get_embedding_model()
-            _get_qdrant_client()
-            _get_bm25_model()
-        except Exception as exc:
-            logger.warning("Could not pre-warm search service singletons: %s", exc)
+        # Keep construction cheap. In particular, the party-name endpoint is a
+        # PostgreSQL query and must not wait for embedding-model initialisation.
+        pass
 
     def search(
         self, db: Session, query: str, *, court: Optional[str] = None,
@@ -326,62 +521,36 @@ class QdrantSearchService:
         if not (query := query.strip()):
             return SearchResponse(query=query, total_results=0, results=[], search_time_ms=0.0)
 
-        client = _get_qdrant_client()
         limit = top_k * _CHUNK_FETCH_MULTIPLIER
+        qdrant_filter = _build_filter(court, year_min, year_max, state, case_type, section_type)
 
-        # ── Keyword / exact-match mode ─────────────────────────────────────────
-        # When the user selects "Keyword Search" we use Qdrant's MatchText filter
-        # on the title field combined with a scroll (no vector needed).  We still
-        # fall through to semantic if zero results are found.
+        # Keyword search uses BM25 sparse vectors, which cover full case text
+        # without requiring a Qdrant payload text index.
         if search_mode == "keyword":
             try:
-                kw_must = [FieldCondition(key="title", match=MatchText(text=query))]
-                base_conditions = _build_filter(court, year_min, year_max, state, case_type, section_type)
-                if base_conditions:
-                    kw_must.extend(base_conditions.must or [])
-                kw_filter = Filter(must=kw_must)
-                # scroll() returns Record objects — convert them to ScoredPoint
-                # with a synthetic score=1.0 so the shared result-builder works.
-                scroll_records, _ = client.scroll(
-                    collection_name=QDRANT_COLLECTION,
-                    scroll_filter=kw_filter,
-                    limit=limit,
-                    with_payload=True,
-                    with_vectors=False,
-                )
-                raw: List[ScoredPoint] = [
-                    ScoredPoint(
-                        id=rec.id,
-                        version=0,
-                        score=1.0,
-                        payload=rec.payload,
-                        vector=None,
-                    )
-                    for rec in scroll_records
-                ]
+                raw = qdrant_search_by_mode(query, qdrant_filter, limit, mode="sparse")
                 if raw:
                     results = _qdrant_hits_to_case_results(raw, db, top_k=top_k)
                     return SearchResponse(
                         query=query, total_results=len(results), results=results,
                         search_time_ms=round((time.perf_counter() - t0) * 1000, 2),
                     )
-                # Fall through to semantic search if no keyword hits
+                # Fall through to hybrid if no sparse hits are available.
             except Exception as exc:
-                logger.warning("Keyword search failed, falling back to semantic: %s", exc)
+                logger.warning("Keyword search failed, falling back to hybrid: %s", exc)
 
         # ── Semantic / hybrid mode ─────────────────────────────────────────────
-        qdrant_filter = _build_filter(court, year_min, year_max, state, case_type, section_type)
+        raw = qdrant_hybrid_search(
+            query, qdrant_filter, limit, include_dense_vectors=True,
+        )
 
-        try:
-            raw = qdrant_hybrid_search(query, qdrant_filter, limit)
-        except Exception as exc:
-            logger.exception("Qdrant search failed: %s", exc)
-            return SearchResponse(
-                query=query, total_results=0, results=[],
-                search_time_ms=round((time.perf_counter() - t0) * 1000, 2),
-            )
-
-        results = _qdrant_hits_to_case_results(raw, db, top_k=top_k)
+        # Keep RRF for ordering, but supply real dense cosine similarity for
+        # the result badge. The embedding model is already warm for the RRF
+        # request, so this small local encode does not create another network
+        # round trip.
+        results = _qdrant_hits_to_case_results(
+            raw, db, top_k=top_k, dense_query=_embed(query),
+        )
         return SearchResponse(
             query=query, total_results=len(results), results=results,
             search_time_ms=round((time.perf_counter() - t0) * 1000, 2),
@@ -392,15 +561,7 @@ class QdrantSearchService:
         if not (case_name := case_name.strip()):
             return SearchResponse(query=case_name, total_results=0, results=[], search_time_ms=0.0)
 
-        try:
-            name_filter = Filter(must=[FieldCondition(key="title", match=MatchText(text=case_name))])
-            limit = top_k * _CHUNK_FETCH_MULTIPLIER
-            raw = qdrant_hybrid_search(case_name, name_filter, limit)
-        except Exception as exc:
-            logger.exception("Qdrant search_by_case_name failed: %s", exc)
-            raw = []
-
-        results = _qdrant_hits_to_case_results(raw, db, top_k=top_k)
+        results = _search_by_case_name_in_database(db, case_name, top_k)
         return SearchResponse(
             query=case_name, total_results=len(results), results=results,
             search_time_ms=round((time.perf_counter() - t0) * 1000, 2),
@@ -442,6 +603,7 @@ class QdrantSearchService:
             raw = client.query_points(
                 collection_name=QDRANT_COLLECTION,
                 query=centroid.tolist(),
+                using="dense",
                 limit=limit, with_payload=True,
             ).points
         except Exception as exc:

@@ -42,6 +42,9 @@ class CaseResult(BaseModel):
     case_type: Optional[str] = None
     state: Optional[str] = None
     score: float
+    # The cosine similarity from the dense branch of a hybrid search.  RRF's
+    # ``score`` is intentionally kept for ranking and is not a percentage.
+    semantic_score: Optional[float] = None
     top_chunk: ChunkResult
     all_chunks: List[ChunkResult] = Field(default_factory=list)
 

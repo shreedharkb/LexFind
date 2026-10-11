@@ -53,6 +53,14 @@ def classifier_node(state: LexFindState) -> LexFindState:
     if explicit_mode == "corpus":
         return {**state, "is_legal": True, "intent": "corpus_search"}
 
+    # A session created by "Analyze" (or a session with an uploaded file) is
+    # document-scoped.  Do not let a conversational message such as "I have
+    # attached it" be classified as general chat: that route has no access to
+    # session documents and incorrectly tells the user that no attachment is
+    # available.
+    if has_documents:
+        return {**state, "is_legal": True, "intent": "document_chat"}
+
     try:
         client = get_groq_client()
         if not client: raise ValueError("Groq client not configured")

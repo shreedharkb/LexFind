@@ -98,11 +98,17 @@ services:
       - "127.0.0.1:8000:8000"    # bind to localhost only; nginx proxies externally
     env_file:
       - ./backend/.env
+    environment:
+      # Inside Compose the Qdrant container is reachable by its service name.
+      # Local uvicorn uses backend/.env's localhost value instead.
+      QDRANT_HOST: qdrant
     volumes:
       - ./backend/data:/app/data
       - ./backend/scripts:/app/scripts
       - lexfind_tmp_uploads:/tmp/confidential_uploads
     depends_on:
+      db:
+        condition: service_healthy
       rabbitmq:
         condition: service_healthy
     healthcheck:
@@ -130,10 +136,14 @@ services:
       -Q lexfind_documents
     env_file:
       - ./backend/.env
+    environment:
+      QDRANT_HOST: qdrant
     volumes:
       - ./backend/data:/app/data
       - lexfind_tmp_uploads:/tmp/confidential_uploads
     depends_on:
+      db:
+        condition: service_healthy
       rabbitmq:
         condition: service_healthy
     healthcheck:

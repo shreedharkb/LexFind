@@ -12,7 +12,7 @@ from qdrant_client import QdrantClient
 
 logger = logging.getLogger(__name__)
 
-COLLECTION_NAME = "legal_corpus"
+COLLECTION_NAME = os.getenv("QDRANT_COLLECTION", "legal_corpus_hybrid")
 
 _client: Optional[QdrantClient] = None
 

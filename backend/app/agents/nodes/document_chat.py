@@ -4,6 +4,7 @@ Answers queries based on attached documents.
 Routes retrieval based on source_type (legal_case vs uploaded).
 """
 import logging
+import os
 from pathlib import Path
 
 from dotenv import load_dotenv
@@ -28,11 +29,29 @@ TOP_K_QDRANT = 8
 TOP_K_PGVECTOR = 8
 
 
-def _search_qdrant_by_doc(db: Session, doc_id: str, question: str, query_vector: List[float]) -> List[Dict]:
+def _resolve_corpus_document_id(db: Session, document: Document) -> str:
+    """Return the corpus UUID for an attached legal-case Document.
+
+    New Analyze sessions reuse the corpus UUID as ``documents.id``.  Older
+    sessions may have a separately generated Document UUID, though, so use the
+    case filename to resolve the Qdrant/``legal_documents`` identifier first.
+    """
+    filename = os.path.basename(document.blob_path or "")
+    if filename:
+        corpus_id = db.execute(
+            text("SELECT id::text FROM legal_documents WHERE filename = :filename"),
+            {"filename": filename},
+        ).scalar()
+        if corpus_id:
+            return str(corpus_id)
+    return str(document.id)
+
+
+def _search_qdrant_by_doc(db: Session, doc_id: str, search_query: str) -> List[Dict]:
     doc_filter = Filter(must=[FieldCondition(key="document_id", match=MatchValue(value=doc_id))])
     
     points = qdrant_hybrid_search(
-        query_text=question,
+        query_text=search_query,
         qdrant_filter=doc_filter,
         limit=TOP_K_QDRANT,
     )
@@ -76,11 +95,10 @@ def _search_pgvector_by_doc(db: Session, doc_id: str, query_vector: List[float])
         LIMIT :top_k
     """)
     rows = db.execute(sql, {"query_vec": vector_str, "doc_id": doc_id, "top_k": TOP_K_PGVECTOR}).fetchall()
-    import os as _os
     return [
         {
             "chunk_text": row.chunk_text, "document_id": str(row.document_id), "chunk_id": str(row.chunk_id),
-            "title": row.title, "page_number": row.page_number, "blob_path": _os.path.basename(row.blob_path),
+            "title": row.title, "page_number": row.page_number, "blob_path": os.path.basename(row.blob_path),
             "score": float(row.score), "source": "pgvector",
         }
         for row in rows
@@ -90,8 +108,8 @@ def _search_pgvector_by_doc(db: Session, doc_id: str, query_vector: List[float])
 def _build_citations(chunks: List[Dict]) -> List[Dict]:
     citations = []
     for c in chunks:
-        text = c.get("chunk_text", "")
-        excerpt = text[:200] + "..." if len(text) > 200 else text
+        text_chunk = c.get("chunk_text", "")
+        excerpt = text_chunk[:200] + "..." if len(text_chunk) > 200 else text_chunk
         
         if c.get("source") == "qdrant":
             citations.append({
@@ -109,8 +127,6 @@ def _build_citations(chunks: List[Dict]) -> List[Dict]:
     return citations
 
 
-
-
 def document_chat_node(state: LexFindState) -> LexFindState:
     question = state["question"]
     doc_ids = state.get("document_ids", [])
@@ -120,7 +136,7 @@ def document_chat_node(state: LexFindState) -> LexFindState:
 
     # Use enhanced_query from query_enhancement_node if available
     search_query = state.get("enhanced_query") or question
-    query_vector = embed(search_query)
+    query_vector = None
     all_chunks   = []
     attempts     = state.get("retrieval_attempts", 0)
 
@@ -131,8 +147,11 @@ def document_chat_node(state: LexFindState) -> LexFindState:
                 if not doc: continue
 
                 if doc.source_type == "legal_case":
-                    chunks = _search_qdrant_by_doc(db, str(doc_id), question, query_vector)
+                    corpus_document_id = _resolve_corpus_document_id(db, doc)
+                    chunks = _search_qdrant_by_doc(db, corpus_document_id, search_query)
                 else:
+                    if query_vector is None:
+                        query_vector = embed(search_query)
                     chunks = _search_pgvector_by_doc(db, str(doc_id), query_vector)
                 all_chunks.extend(chunks)
     except Exception as exc:

@@ -10,7 +10,9 @@ FROM python:3.11-slim
 ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1 \
     PIP_NO_CACHE_DIR=1 \
-    PIP_DISABLE_PIP_VERSION_CHECK=1
+    PIP_DISABLE_PIP_VERSION_CHECK=1 \
+    HF_HOME=/opt/model-cache/huggingface \
+    FASTEMBED_CACHE_PATH=/opt/model-cache/fastembed
 
 # System deps required by PyMuPDF, torch, and native extensions
 RUN apt-get update && apt-get install -y --no-install-recommends \
@@ -33,6 +35,11 @@ RUN pip install --upgrade pip && \
         --no-cache-dir && \
     grep -v "^torch" requirements.txt > /tmp/requirements_no_torch.txt && \
     pip install -r /tmp/requirements_no_torch.txt --no-cache-dir
+
+# Keep the first user search from downloading models. These are required for
+# dense retrieval and BM25/RRF respectively, so fetch them while building.
+RUN python -c "from sentence_transformers import SentenceTransformer; SentenceTransformer('sentence-transformers/all-mpnet-base-v2')" && \
+    python -c "from fastembed import SparseTextEmbedding; SparseTextEmbedding(model_name='Qdrant/bm25')"
 
 # Copy the rest of the application
 COPY . .

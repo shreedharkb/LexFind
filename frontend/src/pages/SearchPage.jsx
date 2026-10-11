@@ -163,6 +163,17 @@ function SkeletonCard() {
   );
 }
 
+function relevanceLabel(searchMode, result) {
+  // RRF is a rank-fusion score, not a calibrated similarity percentage.  Showing
+  // score * 100 made hybrid results look worse than the old dense-only search.
+  if (searchMode === 'name') return 'Name match';
+  if (searchMode === 'keyword') return 'Keyword ranked';
+  const semanticScore = Number(result.semantic_score);
+  return Number.isFinite(semanticScore)
+    ? `${Math.round(semanticScore * 100)}% match`
+    : 'Hybrid ranked';
+}
+
 // ── Main SearchPage ──────────────────────────────────────────────────────────
 const COURTS = [
   'Supreme Court of India',
@@ -203,6 +214,7 @@ function SearchPage() {
     try { return JSON.parse(sessionStorage.getItem('lexSearchResults') || '[]'); } catch { return []; }
   });
   const [loading, setLoading] = useState(false);
+  const [searchError, setSearchError] = useState(null);
   const [searchTime, setSearchTime] = useState(null);
   const [isKeywordMode, setIsKeywordMode] = useState(false);
   const [isNameMode, setIsNameMode] = useState(false);
@@ -233,6 +245,7 @@ function SearchPage() {
     if (!query.trim()) return;
     setLoading(true);
     setResults([]);
+    setSearchError(null);
     try {
       let data;
       if (isNameMode) {
@@ -252,6 +265,7 @@ function SearchPage() {
     } catch (error) {
       console.error('Search error:', error);
       setResults([]);
+      setSearchError(error.message || 'Search is temporarily unavailable. Please try again.');
     } finally {
       setLoading(false);
     }
@@ -275,6 +289,7 @@ function SearchPage() {
     setQuery('');
     setResults([]);
     setSearchTime(null);
+    setSearchError(null);
     clearFilters();
     sessionStorage.removeItem('lexSearchQuery');
     sessionStorage.removeItem('lexSearchResults');
@@ -481,6 +496,15 @@ function SearchPage() {
         </div>
       )}
 
+      {searchError && !loading && (
+        <div className="max-w-3xl mx-auto px-4 sm:px-6 -mt-4 pb-2">
+          <div role="alert" className="flex items-center gap-2 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+            <AlertCircle className="h-4 w-4 shrink-0" />
+            <span>{searchError}</span>
+          </div>
+        </div>
+      )}
+
       {/* Skeleton loaders */}
       {loading && (
         <div className="py-8">
@@ -520,7 +544,7 @@ function SearchPage() {
                         {result.title || filenameToTitle(id)}
                       </h4>
                       <span className="self-start bg-gray-100 text-gray-600 px-2.5 py-1 rounded-full text-xs font-medium whitespace-nowrap">
-                        {Math.round(result.similarity_percentage || result.score * 100 || 80)}% match
+                        {relevanceLabel(isNameMode ? 'name' : (isKeywordMode ? 'keyword' : 'hybrid'), result)}
                       </span>
                     </div>
                     {(result.court || result.year) && (
