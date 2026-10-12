@@ -148,6 +148,8 @@ async def attach_document(
     doc = doc_repo.get_document(db, request.document_id)
     if not doc:
         raise HTTPException(status_code=404, detail="Document not found")
+    if doc.owner_id is not None and doc.owner_id != uuid.UUID(user_id):
+        raise HTTPException(status_code=403, detail="Not authorized to attach this document")
 
     sd_repo.attach_document(db, session.id, doc.id)
     return {"status": "attached"}

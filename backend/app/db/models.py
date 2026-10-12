@@ -170,7 +170,7 @@ class Document(Base):
     )
     title = Column(String(500), nullable=False)
     blob_path = Column(String(1000), nullable=False)
-    file_hash = Column(String(64), nullable=True, unique=True)
+    file_hash = Column(String(64), nullable=True)
     file_size_bytes = Column(Integer, nullable=True)
     status = Column(
         Enum("uploaded", "processing", "ready", "failed", name="doc_status_enum"),
@@ -190,7 +190,10 @@ class Document(Base):
         "SessionDocument", back_populates="document", cascade="all, delete-orphan",
     )
 
-    __table_args__ = (Index("ix_documents_status", "status"),)
+    __table_args__ = (
+        Index("ix_documents_status", "status"),
+        UniqueConstraint("owner_id", "file_hash", name="uq_documents_owner_file_hash"),
+    )
 
     def __repr__(self):
         return f"<Document id={self.id} title={self.title!r} status={self.status}>"

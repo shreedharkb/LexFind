@@ -104,7 +104,13 @@ API documentation available at `http://localhost:8000/docs`.
 Open a separate terminal (with the venv activated):
 
 ```bash
-celery -A app.workers.celery_app worker --loglevel=info -Q LexFind_documents
+celery -A app.workers.celery_app worker --loglevel=info -Q lexfind_documents
+```
+
+On Windows, add `-P solo` because Celery's default prefork pool is not supported:
+
+```bash
+celery -A app.workers.celery_app worker --loglevel=info -Q lexfind_documents -P solo
 ```
 
 The Celery worker handles asynchronous PDF processing (text extraction, chunking, embedding generation). It must be running for private PDF uploads to become ready for chat. `docker compose up -d --build` starts it automatically.

@@ -6,6 +6,7 @@ Routes retrieval based on source_type (legal_case vs uploaded).
 import logging
 import os
 from pathlib import Path
+from uuid import UUID
 
 from dotenv import load_dotenv
 from qdrant_client.http.models import FieldCondition, Filter, MatchValue
@@ -140,11 +141,31 @@ def document_chat_node(state: LexFindState) -> LexFindState:
     all_chunks   = []
     attempts     = state.get("retrieval_attempts", 0)
 
+    # Session-document links are checked again here so a stale or manually
+    # inserted link can never expose a private upload to another user.
+    try:
+        caller_id = UUID(str(state.get("user_id", "")))
+    except (TypeError, ValueError):
+        logger.error("DocumentChat received an invalid user ID")
+        return {
+            **state,
+            "answer": "Unable to verify document access. Please try again.",
+            "citations": [],
+            "retrieved_chunks": [],
+        }
+
     try:
         with DatabaseSession() as db:
             for doc_id in doc_ids:
                 doc = db.query(Document).filter(Document.id == doc_id).first()
                 if not doc: continue
+                if doc.owner_id is not None and doc.owner_id != caller_id:
+                    logger.warning(
+                        "DocumentChat denied access to document %s for user %s",
+                        doc_id,
+                        caller_id,
+                    )
+                    continue
 
                 if doc.source_type == "legal_case":
                     corpus_document_id = _resolve_corpus_document_id(db, doc)
