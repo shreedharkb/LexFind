@@ -17,7 +17,7 @@ depends_on: Union[str, Sequence[str], None] = None
 
 
 def upgrade() -> None:
-    op.drop_index("ix_documents_file_hash", table_name="documents")
+    op.execute("DROP INDEX IF EXISTS ix_documents_file_hash")
     op.create_unique_constraint(
         "uq_documents_owner_file_hash",
         "documents",
