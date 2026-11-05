@@ -1,0 +1,47 @@
+
+╔═════════════════════════════════════════════════════════════╗
+║         LexFind — Hybrid Search Evaluation Report         ║
+╚═════════════════════════════════════════════════════════════╝
+
+Total Documents Evaluated : 192
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  FULL 46k CORPUS — HEAD TO HEAD
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+                        Dense Only      Sparse Only     Hybrid (RRF)
+
+  ── Query A (Excerpt) ──
+  hit@1     21.4%             70.3%             45.3%
+  hit@3     26.6%             74.0%             75.5%
+  hit@5     29.2%             76.0%             78.1%
+  mrr       0.244             0.724             0.604
+  Latency (Dense  ) 320.6 ms
+  Latency (Sparse ) 46.4 ms
+  Latency (Hybrid ) 122.5 ms
+
+  ── Query B (Title) ──
+  hit@1     2.1%              20.8%             11.5%
+  hit@3     3.1%              24.5%             24.0%
+  hit@5     4.7%              26.6%             25.5%
+  mrr       0.028             0.230             0.179
+  Latency (Dense  ) 112.3 ms
+  Latency (Sparse ) 14.7 ms
+  Latency (Hybrid ) 43.5 ms
+
+  ── Query C (Topic) ──
+  hit@1     13.5%             64.6%             41.7%
+  hit@3     16.1%             71.4%             69.3%
+  hit@5     21.4%             74.5%             72.4%
+  mrr       0.157             0.683             0.556
+  Latency (Dense  ) 344.7 ms
+  Latency (Sparse ) 30.7 ms
+  Latency (Hybrid ) 49.6 ms
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  FILTER ACCURACY TESTS
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  [    PASS ✓    ]  court = 'Supreme Court'
+  [    PASS ✓    ]  year in [2000, 2010]
+  [    PASS ✓    ]  case_type = 'Writ Petition'
+
+Full report: hybrid_eval_report.json

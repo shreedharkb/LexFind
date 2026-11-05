@@ -1,0 +1,1166 @@
+{
+  "seed": "20261105",
+  "size": 192,
+  "pool_size": 900,
+  "draw": "ORDER BY md5(filename || seed) from legal_documents",
+  "filters": "PDF present, first page >= 100 chars, X v. Y title parseable",
+  "skipped": {
+    "no_pdf": 0,
+    "no_text": 0,
+    "no_title": 4
+  },
+  "judgments": [
+    {
+      "filename": "36593-2022___supremecourt__2022__36593__36593_2022_1_1501_47792_Judgement_17-Oct-2023.pdf",
+      "title": "Reportable  \nIN THE SUPREME COURT OF INDIA \nCIVIL ORIGINAL JURISDICTION \n \nWrit Petition",
+      "court": "SUPREME COURT",
+      "year": "2023"
+    },
+    {
+      "filename": "60300-1973___jonew__judis__6340.pdf",
+      "title": "RAGHUBIR SINGH\n        Vs.\nRESPONDENT",
+      "court": "SUPREME COURT",
+      "year": "1974"
+    },
+    {
+      "filename": "100022-2005___jonew__judis__33943.pdf",
+      "title": "IN THE SUPREME COURT OF INDIA\n   CIVIL ORIGINAL JURISDICTION\nI.A. No.",
+      "court": "SUPREME COURT",
+      "year": "2005"
+    },
+    {
+      "filename": "20793-2005___jonew__judis__41413.pdf",
+      "title": "APPELLANT\nVersus\n STATE OF U.P.",
+      "court": "SUPREME COURT",
+      "year": "2005"
+    },
+    {
+      "filename": "7005-2008___jonew__judis__38357.pdf",
+      "title": "Appellants\nVs.\nState of N.C.T. of Delhi",
+      "court": "SUPREME COURT",
+      "year": "2011"
+    },
+    {
+      "filename": "3644-2012___supremecourt__2012__3644__3644_2012_Judgement_25-Jan-2018.pdf",
+      "title": "REPORTABLE\nIN THE SUPREME COURT OF INDIA\nCIVIL APPELLATE JURISDICTION\nCIVIL APPEAL NO.",
+      "court": "SUPREME COURT",
+      "year": "2018"
+    },
+    {
+      "filename": "6046-1995___jonew__judis__10737.pdf",
+      "title": "B. GANGADHAR\n        Vs.\nRESPONDENT",
+      "court": "SUPREME COURT",
+      "year": "1995"
+    },
+    {
+      "filename": "1808-2004___jonew__judis__31048.pdf",
+      "title": "R.V. RAVEENDRAN\nJUDGMENT",
+      "court": "SUPREME COURT",
+      "year": "2008"
+    },
+    {
+      "filename": "37225-2017___supremecourt_vernacular__2017__37225__37225_2017_14_15_14899_Judgement_09-Jul-2019_HIN.pdf",
+      "title": "kk esa vuqokfnr fu.kZ",
+      "court": null,
+      "year": "2019"
+    },
+    {
+      "filename": "68480-1984___jonew__judis__15825.pdf",
+      "title": "SMT. GIAN KAUR\n        Vs.\nRESPONDENT",
+      "court": "SUPREME COURT",
+      "year": "1996"
+    },
+    {
+      "filename": "28336-2008___jonew__judis__41129.pdf",
+      "title": "SPECIAL LEAVE PETITION",
+      "court": "SUPREME COURT",
+      "year": "2014"
+    },
+    {
+      "filename": "15720-2020___supremecourt__2020__15720__15720_2020_4_11_50126_Judgement_06-Feb-2024.pdf",
+      "title": "Arising out of Special Leave to Appeal",
+      "court": "Supreme Court",
+      "year": "2024"
+    },
+    {
+      "filename": "32206-2012___jonew__judis__40885.pdf",
+      "title": "REPORTABLE\n IN THE SUPREME COURT OF INDIA\n CIVIL APPELLATE JURISDICTION\nCIVIL APPEAL NO.",
+      "court": "SUPREME COURT",
+      "year": "2013"
+    },
+    {
+      "filename": "28438-2014___supremecourt_vernacular__2014__28438__28438_2014_11_1501_41005_Judgement_16-Jan-2023_HIN.pdf",
+      "title": "kk esa vuqokfnr fu.kZ",
+      "court": null,
+      "year": "2018"
+    },
+    {
+      "filename": "61657-1977___jonew__judis__5003.pdf",
+      "title": "S. P. KOHLI, CIVIL SURGEON, FEROZEPUR\n        Vs.\nRESPONDENT",
+      "court": "SUPREME COURT",
+      "year": "1978"
+    },
+    {
+      "filename": "23631-2005___supremecourt__2005__23631__23631_2005_1_1_47217_Judgement_26-Sep-2023.pdf",
+      "title": "Reportable\nIN THE SUPREME COURT OF INDIA\nCIVIL APPELLATE JURISDICTION\nIA No",
+      "court": "SUPREME COURT",
+      "year": "2022"
+    },
+    {
+      "filename": "8159-1999___jonew__judis__26795.pdf",
+      "title": "civil",
+      "court": "SUPREME COURT",
+      "year": "1999"
+    },
+    {
+      "filename": "18758-2011___supremecourt__2011__18758__18758_2011_Order_25-Apr-2017.pdf",
+      "title": "R E P O R T A B L E\nIN THE SUPREME COURT OF INDIA\nCIVIL APPELLATE JURISDICTION\nCIVIL APPEAL NO.",
+      "court": "SUPREME COURT",
+      "year": "2011"
+    },
+    {
+      "filename": "68447-1984___jonew__judis__13743.pdf",
+      "title": "MAHESH KUMAR SAHARIA\n        Vs.\nRESPONDENT",
+      "court": "SUPREME COURT",
+      "year": "1997"
+    },
+    {
+      "filename": "76477-1996___jonew__judis__14022.pdf",
+      "title": "RAZAKALI KHURESHI SANDHI\n        Vs.\nRESPONDENT",
+      "court": "SUPREME COURT",
+      "year": "1997"
+    },
+    {
+      "filename": "167-2009___supremecourt_vernacular__2009__167__167_2009_11_1501_16003_Judgement_14-Aug-2019_HIN.pdf",
+      "title": "kd vihyh",
+      "court": null,
+      "year": "2009"
+    },
+    {
+      "filename": "42153-2015___jonew__judis__43495.pdf",
+      "title": "Pareshbhai Annabhai Sonvane",
+      "court": "SUPREME COURT",
+      "year": "2016"
+    },
+    {
+      "filename": "13343-2012___jonew__judis__40676.pdf",
+      "title": "REPORTABLE\nIN THE SUPREME COURT OF INDIA\nCIVIL APPELLATE JURISDICTION\nCIVIL APPEAL NO.",
+      "court": "SUPREME COURT",
+      "year": "2013"
+    },
+    {
+      "filename": "60359-1971___jonew__judis__9999.pdf",
+      "title": "ANR.\n        Vs.\nRESPONDENT",
+      "court": "SUPREME COURT",
+      "year": "1981"
+    },
+    {
+      "filename": "47515-2023___supremecourt__2023__47515__47515_2023_8_65_55468_Judgement_09-Sep-2024.pdf",
+      "title": "REPORTABLE\nIN THE SUPREME COURT OF INDIA\nCIVIL APPELLATE JURISDICTION\nSPECIAL LEAVE PETITION",
+      "court": "SUPREME COURT",
+      "year": "2024"
+    },
+    {
+      "filename": "5592-2003___jonew__judis__32456.pdf",
+      "title": "REPORTABLE\nIN THE SUPREME COURT OF INDIA\nCIVIL APPELLATE JURISDICTION\nCIVIL APPEAL NO.",
+      "court": "SUPREME COURT",
+      "year": "2003"
+    },
+    {
+      "filename": "13227-1998___jonew__judis__26814.pdf",
+      "title": "civil",
+      "court": "SUPREME COURT",
+      "year": "1999"
+    },
+    {
+      "filename": "302-1965___jonew__judis__2061.pdf",
+      "title": "ORS.\n        Vs.\nRESPONDENT",
+      "court": "SUPREME COURT",
+      "year": "1968"
+    },
+    {
+      "filename": "200497-1993___jonew__judis__10357.pdf",
+      "title": "INDIAN MEDICAL ASSOCIATION\n        Vs.\nRESPONDENT",
+      "court": "SUPREME COURT",
+      "year": "1995"
+    },
+    {
+      "filename": "22033-2004___supremecourt__2004__22033__22033_2004_Judgement_11-Jul-2018.pdf",
+      "title": "REPORTABLE\nIN THE SUPREME COURT OF INDIA\nCIVIL APPELLATE JURISDICTION\nCIVIL APPEAL  NO.",
+      "court": "SUPREME COURT",
+      "year": "2009"
+    },
+    {
+      "filename": "9754-2003___jonew__judis__33908.pdf",
+      "title": "Mr.  Venugopal  and  Mrs.\nRamathilagam appellant No.",
+      "court": "SUPREME COURT",
+      "year": "2003"
+    },
+    {
+      "filename": "301-1963___jonew__judis__3139.pdf",
+      "title": "PR.  AL.  M. M. ANNAMALAI CHETTIAR\n        Vs.\nRESPONDENT",
+      "court": "SUPREME COURT",
+      "year": "1964"
+    },
+    {
+      "filename": "27793-2008___supremecourt__2008__27793__27793_2008_Judgement_31-Jan-2018.pdf",
+      "title": "REPORTABLE\nIN THE SUPREME COURT OF INDIA\nCIVIL APPELLATE JURISDICTION\nCIVIL APPEAL  NO.",
+      "court": "SUPREME COURT",
+      "year": "2012"
+    },
+    {
+      "filename": "65-1960___jonew__judis__4329.pdf",
+      "title": "TAX,ANDHRA PRADESH\n        Vs.\nRESPONDENT",
+      "court": "SUPREME COURT",
+      "year": "1961"
+    },
+    {
+      "filename": "17395-2010___supremecourt__2010__17395__17395_2010_31_1504_28001_Judgement_07-May-2021.pdf",
+      "title": "Achhar Singh\n..... Appellant\n    \n                        VERSUS\nState of Himachal Pradesh\n..... Respondent\nWITH\nCRIMINA",
+      "court": "Supreme Court",
+      "year": "2010"
+    },
+    {
+      "filename": "19464-2011___jonew__judis__40470.pdf",
+      "title": "JUDGMENT\nREPORTABLE\nIN THE SUPREME COURT OF INDIA\nCIVIL APPELLATE JURISDICTION\nCIVIL APPEAL NO.",
+      "court": "Supreme Court",
+      "year": "2012"
+    },
+    {
+      "filename": "28607-2007___jonew__judis__38863.pdf",
+      "title": "REPORTABLE\n        IN THE SUPREME COURT OF INDIA\n   CIVIL APPELLATE JURISDICTION\nCIVIL  APPEAL No.",
+      "court": "SUPREME COURT",
+      "year": "2011"
+    },
+    {
+      "filename": "81723-1993___jonew__judis__13715.pdf",
+      "title": "ANR.\n        Vs.\nRESPONDENT",
+      "court": "SUPREME COURT",
+      "year": "1997"
+    },
+    {
+      "filename": "15570-2009___supremecourt__2009__15570__15570_2009_1_1501_51212_Judgement_07-Mar-2024.pdf",
+      "title": "VERSUS\nCENTRAL BUREAU OF INVESTIGATION                    Respondent",
+      "court": null,
+      "year": "2010"
+    },
+    {
+      "filename": "272-1998___jonew__judis__16718.pdf",
+      "title": "S.  THANGAPPAN\n        Vs.\nRESPONDENT",
+      "court": "SUPREME COURT",
+      "year": "1999"
+    },
+    {
+      "filename": "1927-2000___jonew__judis__18588.pdf",
+      "title": "SHIVA SHANKAR PANDEY",
+      "court": "SUPREME COURT",
+      "year": "2000"
+    },
+    {
+      "filename": "2545-1997___jonew__judis__14122.pdf",
+      "title": "NADAR MAHAJAN SANGAM S. VELAICHAMYNADAR KALLOORI",
+      "court": "SUPREME COURT",
+      "year": "1997"
+    },
+    {
+      "filename": "60279-1973___jonew__judis__6091.pdf",
+      "title": "K.   BALASUBRAMANIA CHETTY\n        Vs.\nRESPONDENT",
+      "court": "SUPREME COURT",
+      "year": "1974"
+    },
+    {
+      "filename": "1630-1997___jonew__judis__26167.pdf",
+      "title": "civil",
+      "court": "SUPREME COURT",
+      "year": "1997"
+    },
+    {
+      "filename": "22737-2005___jonew__judis__28375.pdf",
+      "title": "Lalu Prasad Yadav\nRESPONDENT",
+      "court": "SUPREME COURT",
+      "year": "2006"
+    },
+    {
+      "filename": "22779-2014___supremecourt_vernacular__2014__22779__22779_2014_2_1506_12987_Judgement_05-Mar-2019_HIN.pdf",
+      "title": "kd vihyh",
+      "court": null,
+      "year": "2019"
+    },
+    {
+      "filename": "64233-2008___jonew__judis__37760.pdf",
+      "title": "Gopal Dass Thru. Brother Anand Vir\n  ..\n     Petitioner",
+      "court": "SUPREME COURT",
+      "year": "2008"
+    },
+    {
+      "filename": "20262-2020___supremecourt__2020__20262__20262_2020_31_1501_25061_Judgement_10-Dec-2020.pdf",
+      "title": "REPORTABLE\nIN THE SUPREME COURT OF INDIA\nCIVIL APPELLATE JURISDICTION\n               CIVIL APPEAL NO.",
+      "court": "Supreme Court",
+      "year": "2020"
+    },
+    {
+      "filename": "18378-2010___jonew__judis__37318.pdf",
+      "title": "J U D G M E N T \nP. Sathasivam, J.",
+      "court": "SUPREME COURT",
+      "year": "2010"
+    },
+    {
+      "filename": "23665-2008___jonew__judis__41795.pdf",
+      "title": "REPORTABLE\nIN THE SUPREME COURT OF INDIA\nCIVIL APPELLATE JURISDICTION\nCIVIL APPEAL NOS.",
+      "court": "SUPREME COURT",
+      "year": "2009"
+    },
+    {
+      "filename": "20662-2006___jonew__judis__28799.pdf",
+      "title": "civil",
+      "court": "SUPREME COURT",
+      "year": "2006"
+    },
+    {
+      "filename": "20329-2009___jonew__judis__41066.pdf",
+      "title": "JUDGMENT\nREPORTABLE\n           IN THE SUPREME COURT OF INDIA\nCIVIL APPELLATE JURISDICTION\nCIVIL APPEAL NO.",
+      "court": "SUPREME COURT",
+      "year": "2013"
+    },
+    {
+      "filename": "1153-2014___jonew__judis__43307.pdf",
+      "title": "REPORTABLE    \nIN THE SUPREME COURT OF INDIA\nCIVILAPPELLATE JURISDICTION\n   \n  CIVIL APPEAL NOS.",
+      "court": "SUPREME COURT",
+      "year": "2016"
+    },
+    {
+      "filename": "60241-2008___jonew__judis__35502.pdf",
+      "title": "REPORTABLE\nIN THE SUPREME COURT OF INDIA\nCIVIL APPELLATE JURISDICTION\nCIVIL APPEAL NO.",
+      "court": "SUPREME COURT",
+      "year": "2008"
+    },
+    {
+      "filename": "65128-1984___jonew__judis__18097.pdf",
+      "title": "civil",
+      "court": "SUPREME COURT",
+      "year": "1984"
+    },
+    {
+      "filename": "3759-2007___jonew__judis__31374.pdf",
+      "title": "civil",
+      "court": "SUPREME COURT",
+      "year": "2008"
+    },
+    {
+      "filename": "6958-2006___jonew__judis__32973.pdf",
+      "title": "Munusamy               ...Appellant\nVersus\n    State of Tamil Nadu",
+      "court": "SUPREME COURT",
+      "year": "2008"
+    },
+    {
+      "filename": "90432-1964___jonew__judis__3048.pdf",
+      "title": "BOMBAY MUNICIPAL CORPORATION\n        Vs.\nRESPONDENT",
+      "court": "SUPREME COURT",
+      "year": "1965"
+    },
+    {
+      "filename": "202616-1993___jonew__judis__19572.pdf",
+      "title": "The Judgment of the Court was delivered by\nFAIZAN UDDIN, J.",
+      "court": "SUPREME COURT",
+      "year": "1993"
+    },
+    {
+      "filename": "5034-2014___supremecourt__2014__5034__5034_2014_35_1501_27915_Judgement_06-May-2021.pdf",
+      "title": "Appellant\nVersus\nState of Uttar Pradesh",
+      "court": "SUPREME COURT",
+      "year": "2015"
+    },
+    {
+      "filename": "26127-2004___jonew__judis__29092.pdf",
+      "title": "civil",
+      "court": "SUPREME COURT",
+      "year": "2007"
+    },
+    {
+      "filename": "114-1958___jonew__judis__437.pdf",
+      "title": "MAHARANA SHRI JAYAVANTSINHJI,RANMALSINHJI\n        Vs.\nRESPONDENT",
+      "court": "SUPREME COURT",
+      "year": "1958"
+    },
+    {
+      "filename": "6575-2003___jonew__judis__29822.pdf",
+      "title": "civil",
+      "court": "SUPREME COURT",
+      "year": "2006"
+    },
+    {
+      "filename": "5705-2013___jonew__judis__41356.pdf",
+      "title": "VERSUS\nRAJU THR. MEMBER JUVENILE       \n ...  RESPONDENT",
+      "court": "SUPREME COURT",
+      "year": "2014"
+    },
+    {
+      "filename": "21902-2006___jonew__judis__35722.pdf",
+      "title": "O \nR D E R\nMs. Meenakshi Vij, the learned counsel has appeared \nbefore  us  today  along  with  Ms.  V.Mohana,  the  lea",
+      "court": "SUPREME COURT",
+      "year": "2008"
+    },
+    {
+      "filename": "38-1950___jonew__judis__1249.pdf",
+      "title": "THE BHARAT BANK LTD., DELHI\n        Vs.\nRESPONDENT",
+      "court": "SUPREME COURT",
+      "year": "1950"
+    },
+    {
+      "filename": "75943-1990___jonew__judis__13932.pdf",
+      "title": "MANGAT RAI\n        Vs.\nRESPONDENT",
+      "court": "SUPREME COURT",
+      "year": "1997"
+    },
+    {
+      "filename": "18862-2004___jonew__judis__40618.pdf",
+      "title": "JUDGMENT\nREPORTABLE\nIN THE SUPREME COURT OF INDIA\nCIVIL APPELLATE JURISDICTION\nCIVIL APPEAL NO.",
+      "court": "SUPREME COURT",
+      "year": "2006"
+    },
+    {
+      "filename": "1383-2015___supremecourt__2015__1383__1383_2015_Judgement_08-Jan-2018.pdf",
+      "title": "Appellant\nVersus\nRAJ KUMAR\n                               ...Respondent\nJ U D G M E N T\nR. BANUMATHI, J.\nLeave granted.",
+      "court": "SUPREME COURT",
+      "year": "2018"
+    },
+    {
+      "filename": "6936-2009___jonew__judis__39826.pdf",
+      "title": "Appellants\nVersus\nState of Assam",
+      "court": "SUPREME COURT",
+      "year": "2010"
+    },
+    {
+      "filename": "36295-2010___jonew__judis__41019.pdf",
+      "title": "JUDGMENT\nREPORTABLE  \nIN THE SUPREME COURT OF INDIA\nCIVIL APPELLATE JURISDICTION\nCIVIL APPEAL NOS.",
+      "court": "SUPREME COURT",
+      "year": "2013"
+    },
+    {
+      "filename": "63261-1980___jonew__judis__9258.pdf",
+      "title": "SMT. SOWMITHRI VISHNU\n        Vs.\nRESPONDENT",
+      "court": "SUPREME COURT",
+      "year": "1985"
+    },
+    {
+      "filename": "19999-2010___supremecourt__2010__19999__19999_2010_7_1501_53552_Judgement_09-Jul-2024.pdf",
+      "title": "CIVIL APPEAL NO.",
+      "court": "SUPREME COURT",
+      "year": "2024"
+    },
+    {
+      "filename": "337-1967___jonew__judis__6805.pdf",
+      "title": "SHEIKH MOHAMMAD RAFIQ\n        Vs.\nRESPONDENT",
+      "court": "SUPREME COURT",
+      "year": "1972"
+    },
+    {
+      "filename": "1399-1953___jonew__judis__724.pdf",
+      "title": "BACHHARAM DATTA PATIL AND ANOTHER\n        Vs.\nRESPONDENT",
+      "court": "SUPREME COURT",
+      "year": "1956"
+    },
+    {
+      "filename": "63436-1980___jonew__judis__9775.pdf",
+      "title": "ANOTHER\n        Vs.\nRESPONDENT",
+      "court": "SUPREME COURT",
+      "year": "1983"
+    },
+    {
+      "filename": "27164-2005___jonew__judis__27559.pdf",
+      "title": "civil",
+      "court": "SUPREME COURT",
+      "year": "2006"
+    },
+    {
+      "filename": "6839-2005___jonew__judis__28960.pdf",
+      "title": "This appeal, by special leave, has been preferred against the \njudgment and order dated",
+      "court": "SUPREME COURT",
+      "year": "2006"
+    },
+    {
+      "filename": "76833-1994___jonew__judis__10540.pdf",
+      "title": "KARNATAKA STATE GOVERNMENT FIRSTGRADE COLLEGES PART",
+      "court": "SUPREME COURT",
+      "year": "1995"
+    },
+    {
+      "filename": "90374-1964___jonew__judis__2869.pdf",
+      "title": "GULAB RAI AND ANR.\n        Vs.\nRESPONDENT",
+      "court": "SUPREME COURT",
+      "year": "1965"
+    },
+    {
+      "filename": "21936-2007___jonew__judis__35762.pdf",
+      "title": "Appellant\nVs.\nState Rep. by Insp. Of Police",
+      "court": "SUPREME COURT",
+      "year": "2008"
+    },
+    {
+      "filename": "15637-2014___supremecourt__2014__15637__15637_2014_Order_22-Aug-2017.pdf",
+      "title": "IN THE SUPREME COURT OF INDIA\nCIVIL APPELLATTE JURISDICTION\nCivil Appeal No.",
+      "court": "SUPREME COURT",
+      "year": "2017"
+    },
+    {
+      "filename": "8753-2014___supremecourt__2014__8753__8753_2014_14_1501_43918_Judgement_26-Apr-2023.pdf",
+      "title": "REPORTABLE \n \n \nIN THE SUPREME COURT OF INDIA \nCIVIL APPELLATE JURISDICTION \n \n \nCIVIL APPEAL NOS.",
+      "court": "SUPREME COURT",
+      "year": "2014"
+    },
+    {
+      "filename": "60060-1968___jonew__judis__1512.pdf",
+      "title": "ORS.\n        Vs.\nRESPONDENT",
+      "court": "SUPREME COURT",
+      "year": "1970"
+    },
+    {
+      "filename": "8445-1999___jonew__judis__26999.pdf",
+      "title": "IPC.   The High Court in appeal affirmed the \nconviction of the appellant herein under Sections",
+      "court": "SUPREME COURT",
+      "year": "1999"
+    },
+    {
+      "filename": "3474-1999___jonew__judis__17745.pdf",
+      "title": "civil",
+      "court": "SUPREME COURT",
+      "year": "2001"
+    },
+    {
+      "filename": "25163-2006___jonew__judis__30858.pdf",
+      "title": "civil",
+      "court": "SUPREME COURT",
+      "year": "2008"
+    },
+    {
+      "filename": "39886-2014___supremecourt__2014__39886__39886_2014_Judgement_04-Dec-2018.pdf",
+      "title": "REPORTABLE\nIN THE SUPREME COURT OF INDIA\nCIVIL APPELLATE JURISDICTION\nCIVIL APPEAL NOS.",
+      "court": "SUPREME COURT",
+      "year": "2018"
+    },
+    {
+      "filename": "23596-2007___jonew__judis__40964.pdf",
+      "title": "APPELLANT\nVersus\nSTATE OF PUNJAB",
+      "court": "SUPREME COURT",
+      "year": "2008"
+    },
+    {
+      "filename": "17822-1999___jonew__judis__28554.pdf",
+      "title": "civil",
+      "court": "SUPREME COURT",
+      "year": "2000"
+    },
+    {
+      "filename": "79099-1996___jonew__judis__14514.pdf",
+      "title": "DR. K. RAMULU AND ANR. ETC.\n        Vs.\nRESPONDENT",
+      "court": "SUPREME COURT",
+      "year": "1997"
+    },
+    {
+      "filename": "139-1955___jonew__judis__785.pdf",
+      "title": "IN THE MATTER OFD AN ADVOCATE OF THE SUPREME COURT.\n        Vs.\nRESPONDENT",
+      "court": "SUPREME COURT",
+      "year": "1955"
+    },
+    {
+      "filename": "9490-2000___jonew__judis__18011.pdf",
+      "title": "civil",
+      "court": "SUPREME COURT",
+      "year": "2000"
+    },
+    {
+      "filename": "26190-2015___supremecourt__2015__26190__26190_2015_Judgement_06-Mar-2018.pdf",
+      "title": "REPORTABLE\n        IN THE SUPREME COURT OF INDIA\nCIVIL APPELLATE JURISDICTION\nCIVIL APPEAL No.",
+      "court": "SUPREME COURT",
+      "year": "2015"
+    },
+    {
+      "filename": "37-1999___jonew__judis__29431.pdf",
+      "title": "Km. from the place of occurrence.\nThe First Information Report was lodged by Rajvir Singh",
+      "court": "SUPREME COURT",
+      "year": "1999"
+    },
+    {
+      "filename": "15219-2001___jonew__judis__33349.pdf",
+      "title": "IN THE SUPREME COURT OF INDIA\nCIVIL APPELLATE JURISDICTION\nCIVIL APPEAL NO.",
+      "court": "SUPREME COURT",
+      "year": "2002"
+    },
+    {
+      "filename": "23269-2005___jonew__judis__38462.pdf",
+      "title": "V. ANJANEYULU\n.....\nAPPELLANT\nVERSUS\nSTATE OF A.P. \n.....\nRESPONDENT\nO R D E R",
+      "court": "SUPREME COURT",
+      "year": "2006"
+    },
+    {
+      "filename": "-0___jonew__judis__19058.pdf",
+      "title": "civil",
+      "court": "SUPREME COURT",
+      "year": "2001"
+    },
+    {
+      "filename": "65924-1983___jonew__judis__8336.pdf",
+      "title": "BANARSI LAL\n        Vs.\nRESPONDENT",
+      "court": "SUPREME COURT",
+      "year": "1988"
+    },
+    {
+      "filename": "8290-1997___jonew__judis__19147.pdf",
+      "title": "civil",
+      "court": "SUPREME COURT",
+      "year": "1999"
+    },
+    {
+      "filename": "24153-2009___jonew__judis__35801.pdf",
+      "title": "Appellant\nVs.\nMr. Aviral Mittal",
+      "court": "SUPREME COURT",
+      "year": "2009"
+    },
+    {
+      "filename": "21839-2006___jonew__judis__32488.pdf",
+      "title": "IN THE SUPREME COURT OF INDIA\nCIVIL APPELLATE JURISDICTION\nCIVIL APPEAL NO.",
+      "court": "SUPREME COURT",
+      "year": "2008"
+    },
+    {
+      "filename": "63729-1982___jonew__judis__7761.pdf",
+      "title": "INDIAN OVERSEAS BANK\n        Vs.\nRESPONDENT",
+      "court": "SUPREME COURT",
+      "year": "1989"
+    },
+    {
+      "filename": "7147-1995___jonew__judis__10621.pdf",
+      "title": "DIVISION, GADAG\n        Vs.\nRESPONDENT",
+      "court": "SUPREME COURT",
+      "year": "1995"
+    },
+    {
+      "filename": "60262-1968___jonew__judis__5705.pdf",
+      "title": "BY L.Rs.\n        Vs.\nRESPONDENT",
+      "court": "SUPREME COURT",
+      "year": "1976"
+    },
+    {
+      "filename": "63449-2002___jonew__judis__18211.pdf",
+      "title": "civil",
+      "court": "SUPREME COURT",
+      "year": "2002"
+    },
+    {
+      "filename": "60420-1972___jonew__judis__9124.pdf",
+      "title": "PARGANAS AND ORS.\n        Vs.\nRESPONDENT",
+      "court": "SUPREME COURT",
+      "year": "1986"
+    },
+    {
+      "filename": "32032-2007___jonew__judis__33778.pdf",
+      "title": "Kannika\n \n ....Appellant\nVersus\nMookaiah",
+      "court": "SUPREME COURT",
+      "year": "2009"
+    },
+    {
+      "filename": "-0___jonew__judis__16848.pdf",
+      "title": "S.  ELECTRONICS CORPORATION OF INDIA LTD., ETC.  ETC.\n        Vs.\nRESPONDENT",
+      "court": "SUPREME COURT",
+      "year": "1999"
+    },
+    {
+      "filename": "17251-2010___jonew__judis__38704.pdf",
+      "title": "Reportable\nIN THE SUPREME COURT OF INDIA\nCIVIL APPELLATE JURISDICTION\nCIVIL APPEAL No.",
+      "court": "SUPREME COURT",
+      "year": "2011"
+    },
+    {
+      "filename": "74701-1993___jonew__judis__19581.pdf",
+      "title": "Review Petition",
+      "court": "SUPREME COURT",
+      "year": "1993"
+    },
+    {
+      "filename": "39281-2017___supremecourt__2017__39281__39281_2017_Judgement_13-Jul-2018.pdf",
+      "title": "REPORTABLE \nIN THE SUPREME COURT OF INDIA \nCIVIL APPELLATE JURISDICTION \n \n \nCIVIL APPEAL NO.",
+      "court": "SUPREME COURT",
+      "year": "2018"
+    },
+    {
+      "filename": "27813-2011___jonew__judis__43400.pdf",
+      "title": "Appellant\nVersus\nPRAMOD KUMAR DHAMIJA",
+      "court": "SUPREME COURT",
+      "year": "2016"
+    },
+    {
+      "filename": "23684-2003___jonew__judis__26859.pdf",
+      "title": "civil",
+      "court": "SUPREME COURT",
+      "year": "2004"
+    },
+    {
+      "filename": "5022-2016___supremecourt__2016__5022__5022_2016_Judgement_06-Sep-2017.pdf",
+      "title": "REPORTABLE\nIN THE SUPREME COURT OF INDIA\nCIVIL APPELLATE JURISDICTION\nCIVIL APPEAL NO",
+      "court": "SUPREME COURT",
+      "year": "2017"
+    },
+    {
+      "filename": "60039-1966___jonew__judis__7221.pdf",
+      "title": "MOMAN LAL\n        Vs.\nRESPONDENT",
+      "court": "SUPREME COURT",
+      "year": "1971"
+    },
+    {
+      "filename": "12354-2010___jonew__judis__41396.pdf",
+      "title": "REPORTABLE\nIN THE SUPREME COURT OF INDIA\nCIVIL APPELLATE JURISDICTION\nCIVIL APPEAL NO.",
+      "court": "SUPREME COURT",
+      "year": "2014"
+    },
+    {
+      "filename": "87-1952___jonew__judis__1072.pdf",
+      "title": "KALIPADA CHAKRABORTI AND ANOTHER\n        Vs.\nRESPONDENT",
+      "court": "SUPREME COURT",
+      "year": "1953"
+    },
+    {
+      "filename": "19564-2007___supremecourt__2007__19564__19564_2007_7_1501_18424_Judgement_22-Nov-2019.pdf",
+      "title": "REPORTABLE\nIN THE SUPREME COURT OF INDIA\nCIVIL APPELLATE JURISDICTION\nCIVIL APPEAL NO.",
+      "court": "Supreme Court",
+      "year": "2009"
+    },
+    {
+      "filename": "7818-1997___jonew__judis__19151.pdf",
+      "title": "civil",
+      "court": "SUPREME COURT",
+      "year": "1997"
+    },
+    {
+      "filename": "1372-2004___jonew__judis__27151.pdf",
+      "title": "civil",
+      "court": "SUPREME COURT",
+      "year": "2005"
+    },
+    {
+      "filename": "60432-1966___jonew__judis__1978.pdf",
+      "title": "OIL MILLS LTD.\n        Vs.\nRESPONDENT",
+      "court": "SUPREME COURT",
+      "year": "1968"
+    },
+    {
+      "filename": "10923-2007___jonew__judis__30987.pdf",
+      "title": "Pravin\nRESPONDENT",
+      "court": "SUPREME COURT",
+      "year": "2008"
+    },
+    {
+      "filename": "14038-2008___jonew__judis__42808.pdf",
+      "title": "MURAD ABDUL MULANI                               .......APPELLANT\nVERSUS\nSALMA BABU SHAIKH",
+      "court": "SUPREME COURT",
+      "year": "2015"
+    },
+    {
+      "filename": "31-1955___jonew__judis__319.pdf",
+      "title": "LILACHAND TULJARAM GUJAR AND OTHERS\n        Vs.\nRESPONDENT",
+      "court": "SUPREME COURT",
+      "year": "1959"
+    },
+    {
+      "filename": "17729-2004___jonew__judis__29231.pdf",
+      "title": "civil",
+      "court": "SUPREME COURT",
+      "year": "2004"
+    },
+    {
+      "filename": "60579-1999___jonew__judis__20331.pdf",
+      "title": "Special Leave Petition",
+      "court": "SUPREME COURT",
+      "year": "1999"
+    },
+    {
+      "filename": "4241-2009___jonew__judis__36560.pdf",
+      "title": "REPORTABLE\nIN THE SUPREME COURT OF INDIA\nCIVIL APPELLATE JURISDICTION\nCIVIL APPEAL NO.",
+      "court": "SUPREME COURT",
+      "year": "2010"
+    },
+    {
+      "filename": "18530-2006___jonew__judis__43190.pdf",
+      "title": "JUDGMENT\nREPORTABLE\nIN THE SUPREME COURT OF INDIA\nCIVIL ORIGINAL JURISDICTION\nWRIT PETITION",
+      "court": "SUPREME COURT",
+      "year": "2006"
+    },
+    {
+      "filename": "30157-2017___supremecourt__2017__30157__30157_2017_33_1501_22536_Judgement_10-Jun-2020.pdf",
+      "title": "IN THE SUPREME COURT OF INDIA \n \nCIVIL ORIGINAL JURISDICTION \n \n \nI.A.NOS.",
+      "court": "SUPREME COURT",
+      "year": "2020"
+    },
+    {
+      "filename": "13479-2020___supremecourt__2020__13479__13479_2020_31_1501_23958_Judgement_16-Sep-2020.pdf",
+      "title": "REPORTABLE\n           IN THE SUPREME COURT OF INDIA\n           CIVIL ORIGINAL",
+      "court": "Supreme Court",
+      "year": "2020"
+    },
+    {
+      "filename": "5814-2000___jonew__judis__18378.pdf",
+      "title": "civil",
+      "court": "SUPREME COURT",
+      "year": "2001"
+    },
+    {
+      "filename": "9286-2014___supremecourt__2014__9286__9286_2014_13_1502_15302_Judgement_24-Jul-2019.pdf",
+      "title": "REPORTABLE \n \nIN THE SUPREME COURT OF INDIA \n \nCIVIL APPELLATE JURISDICTION \n \nCIVIL APPEAL NO.",
+      "court": "SUPREME COURT",
+      "year": "2019"
+    },
+    {
+      "filename": "43536-2018___supremecourt__2018__43536__43536_2018_7_1501_18671_Judgement_29-Nov-2019.pdf",
+      "title": "Leave granted.",
+      "court": "Supreme Court",
+      "year": "2019"
+    },
+    {
+      "filename": "62727-1979___jonew__judis__9264.pdf",
+      "title": "DR. P. NALLA THAMPY TERAH\n        Vs.\nRESPONDENT",
+      "court": "SUPREME COURT",
+      "year": "1985"
+    },
+    {
+      "filename": "160-1958___jonew__judis__4050.pdf",
+      "title": "STATE OF WEST BENGAL\n        Vs.\nRESPONDENT",
+      "court": "SUPREME COURT",
+      "year": "1961"
+    },
+    {
+      "filename": "60425-1975___jonew__judis__4894.pdf",
+      "title": "LINGARI OBULAMMA\n        Vs.\nRESPONDENT",
+      "court": "SUPREME COURT",
+      "year": "1979"
+    },
+    {
+      "filename": "63268-1980___jonew__judis__9487.pdf",
+      "title": "V. SASIDHARAN\n        Vs.\nRESPONDENT",
+      "court": "SUPREME COURT",
+      "year": "1984"
+    },
+    {
+      "filename": "6807-2001___jonew__judis__30793.pdf",
+      "title": "civil",
+      "court": "SUPREME COURT",
+      "year": "2001"
+    },
+    {
+      "filename": "22936-2020___supremecourt__2020__22936__22936_2020_39_1501_32748_Judgement_18-Jan-2022.pdf",
+      "title": "J U D G M E N T\nNAGARATHNA J. \nThese   appeals   have   been   preferred   by   the   informant",
+      "court": "Supreme Court",
+      "year": "2022"
+    },
+    {
+      "filename": "5111-2002___jonew__judis__36927.pdf",
+      "title": "REPORTABLE\n IN THE SUPREME COURT OF INDIA\nCIVIL APPELLATE JURISDICTION\nCIVIL APPEAL NO.",
+      "court": "SUPREME COURT",
+      "year": "2003"
+    },
+    {
+      "filename": "21865-2006___jonew__judis__30871.pdf",
+      "title": "S.B. Sinha, J.\n        Leave granted.",
+      "court": "SUPREME COURT",
+      "year": "2008"
+    },
+    {
+      "filename": "37806-2012___supremecourt__2012__37806__37806_2012_4_1501_55449_Judgement_04-Sep-2024.pdf",
+      "title": "passed by the Allahabad High Court upholding \nthe conviction of the appellant alongwith others under Sections",
+      "court": "SUPREME COURT",
+      "year": "2024"
+    },
+    {
+      "filename": "60418-1974___jonew__judis__8996.pdf",
+      "title": "C.I.T. BOMBAY CITY\n        Vs.\nRESPONDENT",
+      "court": "SUPREME COURT",
+      "year": "1986"
+    },
+    {
+      "filename": "24260-2015___supremecourt__2015__24260__24260_2015_4_103_12692_Judgement_21-Feb-2019.pdf",
+      "title": "Appellant\nVERSUS\nThe State of Maharashtra",
+      "court": "SUPREME COURT",
+      "year": "2015"
+    },
+    {
+      "filename": "6295-2004___supremecourt__2004__6295__6295_2004_Judgement_18-Jul-2017.pdf",
+      "title": "REPORTABLE\n   \n  IN THE SUPREME COURT OF INDIA\n               CIVIL APPELLATE JURISDICTION    \n          \n              ",
+      "court": "SUPREME COURT",
+      "year": "2009"
+    },
+    {
+      "filename": "97-1967___jonew__judis__2234.pdf",
+      "title": "ISHWARLAL GIRDHARLAL JOSHI ETC.\n        Vs.\nRESPONDENT",
+      "court": "SUPREME COURT",
+      "year": "1967"
+    },
+    {
+      "filename": "8195-2018___supremecourt__2018__8195__8195_2018_Judgement_29-Jan-2019.pdf",
+      "title": "REPORTABLE\nIN THE SUPREME COURT OF INDIA\nCIVIL APPELLATE JURISDICTION\nCIVIL APPEAL NO.",
+      "court": "SUPREME COURT",
+      "year": "2019"
+    },
+    {
+      "filename": "3623-2004___jonew__judis__36802.pdf",
+      "title": "STATE OF U.P.\n.....\nAPPELLANT\nVERSUS\nULFAT SINGH",
+      "court": "SUPREME COURT",
+      "year": "2005"
+    },
+    {
+      "filename": "88931-1993___jonew__judis__10779.pdf",
+      "title": "LALITHA J. RAI\n        Vs.\nRESPONDENT",
+      "court": "SUPREME COURT",
+      "year": "1995"
+    },
+    {
+      "filename": "9985-2001___jonew__judis__18016.pdf",
+      "title": "SATYA NARAYAN SHARMA\n        Vs.\nRESPONDENT",
+      "court": "SUPREME COURT",
+      "year": "2001"
+    },
+    {
+      "filename": "60365-2012___jonew__judis__39889.pdf",
+      "title": "IN THE SUPREME COURT OF INDIA\nCRIMINAL APPELLATE JURISDICTION\nSPECIAL LEAVE PETITION",
+      "court": "SUPREME COURT",
+      "year": "2012"
+    },
+    {
+      "filename": "19725-2008___jonew__judis__38183.pdf",
+      "title": "Reportable\nIN THE SUPREME COURT OF INDIA\nCIVIL APPELLATE JURISDICTION\n SPECIAL LEAVE PETITION",
+      "court": "SUPREME COURT",
+      "year": "2008"
+    },
+    {
+      "filename": "63015-1995___jonew__judis__16088.pdf",
+      "title": "BRIJ PAL\n        Vs.\nRESPONDENT",
+      "court": "SUPREME COURT",
+      "year": "1996"
+    },
+    {
+      "filename": "21096-2012___jonew__judis__40990.pdf",
+      "title": "JUDGMENT\nREPORTABLE\nIN THE SUPREME COURT OF INDIA\nCIVIL APPELLATE JURISDICTION\nCIVIL APPEAL NO.",
+      "court": "SUPREME COURT",
+      "year": "2013"
+    },
+    {
+      "filename": "34565-2017___supremecourt__2017__34565__34565_2017_Judgement_12-Apr-2019.pdf",
+      "title": "Reportable\n        IN THE SUPREME COURT OF INDIA\n            CIVIL APPELLATE JURISDICTION\n  CIVIL APPEAL NOS.",
+      "court": "Supreme Court",
+      "year": "2019"
+    },
+    {
+      "filename": "27267-2019___supremecourt__2019__27267__27267_2019_40_33_33777_Judgement_28-Feb-2022.pdf",
+      "title": "REPORTABLE \n \n \nIN THE SUPREME COURT OF INDIA \n \nCIVIL APPELLATE JURISDICTION \n \n \nCIVIL APPEAL NO.",
+      "court": "SUPREME COURT",
+      "year": "2022"
+    },
+    {
+      "filename": "79751-1996___jonew__judis__16804.pdf",
+      "title": "ORS.\n        Vs.\nRESPONDENT",
+      "court": "SUPREME COURT",
+      "year": "1999"
+    },
+    {
+      "filename": "14197-2000___jonew__judis__29245.pdf",
+      "title": "B. C. Deva",
+      "court": "SUPREME COURT",
+      "year": "2001"
+    },
+    {
+      "filename": "3508-2019___supremecourt__2019__3508__3508_2019_35_1502_28712_Judgement_23-Jul-2021.pdf",
+      "title": "Appellant\nVersus\nState of Bihar",
+      "court": "SUPREME COURT",
+      "year": "2021"
+    },
+    {
+      "filename": "90269-1978___jonew__judis__4674.pdf",
+      "title": "DIN\n        Vs.\nRESPONDENT",
+      "court": "SUPREME COURT",
+      "year": "1979"
+    },
+    {
+      "filename": "79789-1996___jonew__judis__26156.pdf",
+      "title": "civil",
+      "court": "SUPREME COURT",
+      "year": "1997"
+    },
+    {
+      "filename": "77368-1996___jonew__judis__18683.pdf",
+      "title": "civil",
+      "court": "SUPREME COURT",
+      "year": "1996"
+    },
+    {
+      "filename": "15061-2004___jonew__judis__27358.pdf",
+      "title": "civil",
+      "court": "SUPREME COURT",
+      "year": "2005"
+    },
+    {
+      "filename": "21973-2006___jonew__judis__31450.pdf",
+      "title": "civil",
+      "court": "SUPREME COURT",
+      "year": "2006"
+    },
+    {
+      "filename": "8803-2019___supremecourt__2019__8803__8803_2019_34_14_32022_Order_11-Dec-2021.pdf",
+      "title": "Reportable\nIN THE SUPREME COURT OF INDIA\nCIVIL APPELLATE JURISDICTION\nCivil Appeal Nos",
+      "court": "SUPREME COURT",
+      "year": "2021"
+    },
+    {
+      "filename": "59-1958___jonew__judis__234.pdf",
+      "title": "MANAGEMENT OF VISHNU SUGAR MILLS LIMITED,HARKHUA, DISTRICT\n        Vs.\nRESPONDENT",
+      "court": "SUPREME COURT",
+      "year": "1960"
+    },
+    {
+      "filename": "65485-1983___jonew__judis__14278.pdf",
+      "title": "C.I.T., M.P., BHOPAL\n        Vs.\nRESPONDENT",
+      "court": "SUPREME COURT",
+      "year": "1997"
+    },
+    {
+      "filename": "60213-1973___jonew__judis__4661.pdf",
+      "title": "CONTROLLER OF ESTATE DUTY, WEST BENGAL\n        Vs.\nRESPONDENT",
+      "court": "SUPREME COURT",
+      "year": "1979"
+    },
+    {
+      "filename": "63914-2002___jonew__judis__18734.pdf",
+      "title": "SHIVARAJ V. PATIL.\nJUDGMENT",
+      "court": "SUPREME COURT",
+      "year": "2002"
+    },
+    {
+      "filename": "89142-1993___jonew__judis__10180.pdf",
+      "title": "KALYAN\n        Vs.\nRESPONDENT",
+      "court": "SUPREME COURT",
+      "year": "1995"
+    },
+    {
+      "filename": "60186-1972___jonew__judis__5299.pdf",
+      "title": "SONS\n        Vs.\nRESPONDENT",
+      "court": "SUPREME COURT",
+      "year": "1977"
+    },
+    {
+      "filename": "26576-2016___jonew__judis__44097.pdf",
+      "title": "JUDGMENT\nREPORTABLE\nIN THE SUPREME COURT OF INDIA\nCIVIL APPELLATE JURISDICTION\nCIVIL APPEAL NO.",
+      "court": "SUPREME COURT",
+      "year": "2016"
+    },
+    {
+      "filename": "202541-1993___jonew__judis__18806.pdf",
+      "title": "Nagpur Improvement Trust\nRESPONDENT",
+      "court": "SUPREME COURT",
+      "year": "1993"
+    },
+    {
+      "filename": "28735-2005___jonew__judis__34064.pdf",
+      "title": "Arun \n   \n..Appellant\n  \nVersus\nState of Maharashtra\n \n..Respondent\nJ U D G M E N T\nDr. ARIJIT PASAYAT, J.",
+      "court": "SUPREME COURT",
+      "year": "2007"
+    },
+    {
+      "filename": "89053-1993___jonew__judis__10404.pdf",
+      "title": "SRI MANOHAR\n        Vs.\nRESPONDENT",
+      "court": "SUPREME COURT",
+      "year": "1995"
+    },
+    {
+      "filename": "16649-2020___supremecourt__2020__16649__16649_2020_33_1501_26784_Judgement_10-Mar-2021.pdf",
+      "title": "REPORTABLE\nIN THE SUPREME COURT OF INDIA\nCIVIL APPELLATE JURISDICTION \nCIVIL APPEAL NOS.",
+      "court": "Supreme Court",
+      "year": "2020"
+    },
+    {
+      "filename": "29935-2019___supremecourt__2019__29935__29935_2019_36_1501_24508_Judgement_28-Oct-2020.pdf",
+      "title": "Reportable  \nIN THE SUPREME COURT OF INDIA \nCIVIL APPELLATE JURISDICTION \nCivil Appeal Nos.",
+      "court": "SUPREME COURT",
+      "year": "2020"
+    },
+    {
+      "filename": "60479-1974___jonew__judis__9001.pdf",
+      "title": "MADNANI DEVELOPMENT CORPN.",
+      "court": "SUPREME COURT",
+      "year": "1986"
+    },
+    {
+      "filename": "131-1960___jonew__judis__3926.pdf",
+      "title": "PUKHRAJ\n        Vs.\nRESPONDENT",
+      "court": "SUPREME COURT",
+      "year": "1962"
+    },
+    {
+      "filename": "27892-2008___jonew__judis__34007.pdf",
+      "title": "O  R  D  E  R\nLeave granted.\nHeard learned counsel for the parties.\nThe Trial Court convicted the appellant under Sectio",
+      "court": "SUPREME COURT",
+      "year": "2009"
+    },
+    {
+      "filename": "60639-1975___jonew__judis__5497.pdf",
+      "title": "SOUTH GUJARAT ROOFING TILES MANUFACTURERSASSOCIATION AND ANR\n        Vs.\nRESPONDENT",
+      "court": "SUPREME COURT",
+      "year": "1976"
+    },
+    {
+      "filename": "6406-2000___jonew__judis__17884.pdf",
+      "title": "civil",
+      "court": "SUPREME COURT",
+      "year": "2001"
+    },
+    {
+      "filename": "11972-2000___jonew__judis__18051.pdf",
+      "title": "civil",
+      "court": "SUPREME COURT",
+      "year": "2001"
+    },
+    {
+      "filename": "-0___jonew__judis__9939.pdf",
+      "title": "STATE OF MADHYA PRADESH\n        Vs.\nRESPONDENT",
+      "court": "SUPREME COURT",
+      "year": "1982"
+    },
+    {
+      "filename": "4372-2008___jonew__judis__32134.pdf",
+      "title": "IN THE SUPREME COURT OF INDIA\nCIVIL APPELLATE JURISDICTION\nCivil Appeal Nos.",
+      "court": "SUPREME COURT",
+      "year": "2008"
+    },
+    {
+      "filename": "25918-2008___jonew__judis__34920.pdf",
+      "title": "IN THE SUPREME COURT OF INDIA\n    CIVIL APPELLATE JURISDICTION\n    \n \n        CIVIL  APPEAL No.",
+      "court": "SUPREME COURT",
+      "year": "2009"
+    },
+    {
+      "filename": "66088-1983___jonew__judis__12271.pdf",
+      "title": "COMMISSIONER OF INCOME TAX\n        Vs.\nRESPONDENT",
+      "court": "SUPREME COURT",
+      "year": "1993"
+    },
+    {
+      "filename": "60302-1972___jonew__judis__5852.pdf",
+      "title": "VULCAN INSURANCE CO. LTD\n        Vs.\nRESPONDENT",
+      "court": "SUPREME COURT",
+      "year": "1975"
+    },
+    {
+      "filename": "22230-2019___supremecourt__2019__22230__22230_2019_34_54_30856_Judgement_25-Oct-2021.pdf",
+      "title": "IN THE SUPREME COURT OF INDIA\nCIVIL ORIGINAL JURISDICTION\nTRANSFER PETITION",
+      "court": "SUPREME COURT",
+      "year": "2019"
+    },
+    {
+      "filename": "13760-2003___jonew__judis__26349.pdf",
+      "title": "civil",
+      "court": "SUPREME COURT",
+      "year": "2003"
+    },
+    {
+      "filename": "90317-1954___jonew__judis__790.pdf",
+      "title": "BRAJNANDAN SINHA\n        Vs.\nRESPONDENT",
+      "court": "SUPREME COURT",
+      "year": "1955"
+    }
+  ]
+}

@@ -114,6 +114,14 @@ backend/scripts/hybrid/*.txt
 backend/scripts/faiss_ingestion/build_chunked_faiss.py
 backend/scripts/faiss_ingestion/chunked_build_report.json
 
+# Committed evaluation evidence: the drawn sample, the per-query hit log, the
+# latency report and the harness input, so the reported numbers are auditable.
+!backend/scripts/faiss_ingestion/chunked_build_report.json
+!backend/scripts/hybrid/eval_sample_192.json
+!backend/scripts/hybrid/hybrid_eval_report.json
+!backend/scripts/hybrid/latency_report.json
+!backend/scripts/hybrid/hybrid_eval_summary.txt
+
 # ── Misc ────────────────────────────────────────────────────
 docs/temp/
 docs/audits/
