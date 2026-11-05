@@ -10,13 +10,13 @@ The system is composed of five layers:
 
 2. **Backend (FastAPI):** Stateless API server. Handles JWT validation, session ownership enforcement, SSE streaming, and dispatches tasks to Celery.
 
-3. **Agent Orchestrator (LangGraph):** A state machine (`lex_graph`) that runs on each chat request. Classifies intent in one LLM call and routes to the correct answer node, which makes the second and final LLM call.
+3. **Agent Orchestrator (LangGraph):** A state machine (`lex_graph`) that runs on each chat request. Classifies intent in one LLM call and routes to the correct answer node. The number of LLM calls varies by path — see [agent.md](agent.md) for the per-path breakdown.
 
 4. **Background Processing (Celery + RabbitMQ):** Handles PDF text extraction, chunking, and embedding generation asynchronously without blocking the API.
 
 5. **Databases:**
    - **PostgreSQL + pgvector:** Stores all relational data (users, sessions, messages, documents) and 768-dim vector embeddings for private user uploads.
-   - **Qdrant:** Hosts the pre-indexed 46k corpus (1,163,447 vectors). Queries are executed using a **Hybrid RRF (Reciprocal Rank Fusion)** approach, combining dense embeddings (`all-mpnet-base-v2`) with sparse BM25 vectors for maximum accuracy.
+   - **Qdrant:** Hosts the pre-indexed 46k corpus (1,163,447 vectors). Queries are executed using a **Hybrid RRF (Reciprocal Rank Fusion)** approach, combining dense embeddings (`all-mpnet-base-v2`) with sparse BM25 vectors for improved retrieval accuracy over dense-only search.
 
 ```
 User
@@ -48,7 +48,7 @@ SSE Stream --> Frontend --> DB persist
 
 **Dual vector store:** Private uploads go to pgvector (scoped by `owner_id` and `document_id`). The shared corpus stays in Qdrant. The agent checks `source_type` on each document to route retrieval correctly — there is no cross-contamination.
 
-**Exactly two LLM calls per request:** The classifier (Node 1) does intent classification and guardrail checking in a single JSON-mode Groq call. The selected answer node (Node 2) does retrieval and synthesis in one more call. No intermediate LLM steps.
+**Variable LLM calls per path:** The classifier (Node 1) does intent classification and guardrail checking in a single JSON-mode Groq call. The selected answer path (Node 2) does retrieval and synthesis. Additional pipeline nodes (query enhancement, retrieval grading, web augmentation) may add calls on certain paths — see [agent.md](agent.md) for the full topology.
 
 **Citations from payload, not LLM:** Qdrant search results contain `title`, `court`, `year`, `citation`, and `chunk_id` in their payload. Citation objects are built directly from this data. The LLM is never asked to extract or generate citations.
 

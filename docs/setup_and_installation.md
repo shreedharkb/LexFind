@@ -4,7 +4,7 @@
 
 | Requirement | Version |
 |---|---|
-| Python | 3.9+ |
+| Python | 3.11+ |
 | Node.js | 18+ |
 | Docker + Docker Compose | Latest |
 | Groq API Key | From console.groq.com |
@@ -12,10 +12,23 @@
 
 ---
 
+## Quick Demo Path (for local demonstration)
+
+The shortest path to a working local demo:
+
+1. Set `GROQ_API_KEY` and `JWT_SECRET_KEY` in `backend/.env` (all other defaults work).
+2. From the repository root: `docker compose up -d --build`.
+3. `cd frontend && npm install && npm run dev`.
+4. Open `http://localhost:5173`, register an account, and search.
+
+A step-by-step walkthrough with a fallback plan (in case any service is unavailable during the demo) is in [demo_script.md](demo_script.md).
+
+---
+
 ## 1. Clone the Repository
 
 ```bash
-git clone https://github.com/YOUR_USERNAME/LexFind.git
+git clone https://github.com/shreedharkb/LexFind.git
 cd LexFind
 ```
 
@@ -58,7 +71,7 @@ QDRANT_HOST=localhost
 QDRANT_PORT=6333
 
 # LLM model (default shown)
-GROQ_MODEL=llama-3.3-70b-versatile
+GROQ_MODEL=openai/gpt-oss-120b
 
 # Keep uploads on the local filesystem for the demo.
 USE_LOCAL_FILES=true
@@ -154,7 +167,7 @@ curl http://localhost:6333/collections
 
 ## Qdrant Corpus Loading
 
-The legal corpus must be pre-loaded into Qdrant before search and corpus chat work. The active collection is named `legal_corpus_hybrid`, with named `dense` and `sparse` vectors, and contains the following payload schema:
+The legal corpus must be pre-loaded into Qdrant before search and corpus chat work. **The corpus data itself (PDFs and generated vectors) is not committed to this repository** — it is stored under the git-ignored `data/` directory and loaded via the ingestion scripts in `backend/scripts/`. The active collection is named `legal_corpus_hybrid`, with named `dense` and `sparse` vectors, and contains the following payload schema:
 
 | Field | Type | Description |
 |---|---|---|

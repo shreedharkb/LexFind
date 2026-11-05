@@ -16,16 +16,16 @@ AI-powered legal research and conversational analysis platform. Search across 46
 ## Features
 
 **Semantic Search**
-Natural language search over 46,456 pre-indexed Indian Supreme Court judgments. Queries are embedded using `sentence-transformers/all-mpnet-base-v2` and compared against a Qdrant vector database (1.1M+ vectors). Results are ranked by cosine similarity and include metadata filters for court, year, state, and case type.
+Natural language search over 46,456 pre-indexed Indian Supreme Court judgments. Queries are embedded using `sentence-transformers/all-mpnet-base-v2` and searched against a Qdrant vector database (1.1M+ vectors) with hybrid retrieval — dense vectors fused with BM25 sparse vectors via Reciprocal Rank Fusion. Results include metadata filters for court, year, state, and case type.
 
 **Agentic RAG Chat**
-Every chat request flows through a LangGraph state machine that classifies intent and routes to one of three execution paths: general legal knowledge, document-specific RAG, or full corpus search. The classifier and the answer node together make exactly two LLM calls per request. Citations are built directly from Qdrant payload metadata — no LLM extraction.
+Every chat request flows through a 14-node LangGraph state machine that classifies intent, guards against off-topic input, and routes to one of three execution paths: general legal knowledge, document-specific RAG, or full corpus search. The number of LLM calls varies by path (see [docs/agent.md](docs/agent.md) for the per-path breakdown). Citations are built directly from Qdrant payload metadata — no LLM extraction.
+
+**Private PDF Upload**
+Users can upload their own PDFs. A Celery worker asynchronously extracts text via PyMuPDF, chunks it with LangChain, generates 768-dim embeddings, and stores them in the private pgvector store isolated by `owner_id`. Private documents never interact with the shared Qdrant corpus. Note: LLM inference is done via the Groq API — uploaded document content is sent to Groq's API when you chat with it, so do not upload genuinely confidential material.
 
 **Document-Specific Chat**
 Clicking Analyze on a corpus search result or uploading a private PDF attaches it to a chat session. The agent automatically searches the correct vector store: Qdrant (filtered by document ID) for corpus cases, pgvector for private uploads. Both paths produce cited, grounded answers.
-
-**Private PDF Upload**
-Users can upload their own confidential PDFs. A Celery worker asynchronously extracts text via PyMuPDF, chunks it with LangChain, generates 768-dim embeddings, and stores them in the private pgvector store isolated by `owner_id`. Private documents never interact with the shared Qdrant corpus.
 
 **Session Management**
 Conversations are persistent and multi-document. Each session stores ordered messages, attached documents, and citations in PostgreSQL. Sessions are strictly isolated by `user_id` and `session_id` — every API request re-validates JWT ownership before any data is read or written.
@@ -70,23 +70,23 @@ Infrastructure layers:
 - **Celery + RabbitMQ** processes document uploads asynchronously.
 - **PostgreSQL + pgvector** stores relational data and private document vectors.
 - **Qdrant** stores the 46k-case shared corpus (1.1M vectors, metadata indexed).
-- **Groq** runs `openai/gpt-oss-120b` for LLM inference.
+- **Groq** runs `openai/gpt-oss-120b` and `openai/gpt-oss-20b` for LLM inference.
 
 ## Tech Stack
 
 | Component | Technology |
 |---|---|
 | Frontend | React 18, Vite, TailwindCSS |
-| Backend | FastAPI, Python 3.9+, SQLAlchemy, Alembic |
+| Backend | FastAPI, Python 3.11+, SQLAlchemy, Alembic |
 | Agent Orchestration | LangGraph, LangChain |
 | Task Queue | Celery, RabbitMQ |
 | Database | PostgreSQL 17, pgvector |
 | Vector Store (Corpus) | Qdrant |
-| LLM | Groq openai/gpt-oss-120b |
+| LLM | Groq openai/gpt-oss-120b (primary), openai/gpt-oss-20b |
 | Embeddings | sentence-transformers/all-mpnet-base-v2 (768-dim) |
 | PDF Processing | PyMuPDF, LangChain RecursiveCharacterTextSplitter |
 | File Storage | Local Storage (USE_LOCAL_FILES=true) |
-| Deployment | Docker Compose, Azure VM, Azure Static Web Apps |
+| Deployment | Local Docker Compose (current demo); Azure VM + Azure Static Web Apps (historical deployment) |
 
 ## Project Structure
 
@@ -134,7 +134,7 @@ LexFind/
 
 ### Prerequisites
 
-- Python 3.9+
+- Python 3.11+
 - Node.js 18+
 - Docker and Docker Compose
 - Groq API key from console.groq.com
@@ -155,7 +155,7 @@ pip install -r requirements.txt
 
 # 3. Configure environment
 cp .env.example .env
-# Edit .env — set GROQ_API_KEY, DATABASE_URL, RABBITMQ_URL
+# Edit .env — set GROQ_API_KEY, DATABASE_URL, CELERY_BROKER_URL
 
 # 4. Run database migrations
 alembic upgrade head
@@ -184,7 +184,8 @@ Open `http://localhost:5173`.
 | Variable | Description |
 |---|---|
 | `DATABASE_URL` | PostgreSQL connection string |
-| `RABBITMQ_URL` | RabbitMQ connection string |
+| `CELERY_BROKER_URL` | RabbitMQ connection string (Celery broker) |
+| `CELERY_RESULT_BACKEND` | Celery result backend (PostgreSQL) |
 | `GROQ_API_KEY` | Required for LLM inference |
 | `JWT_SECRET_KEY` | JWT signing key |
 | `QDRANT_HOST` | Qdrant host (default: localhost) |
@@ -201,32 +202,19 @@ Open `http://localhost:5173`.
 
 ## RAG Metrics & Evaluation
 
-LexFind underwent rigorous multi-system empirical evaluations against 192 test queries over the full 46,000 document corpus. 
-We migrated from a baseline FAISS index to a **Qdrant Hybrid RRF** pipeline, boosting Hit@5 accuracy for excerpt queries from 35.9% to **82.3%**.
+Retrieval was evaluated empirically against 192 randomly sampled judgments × 3 query types (excerpt, title, sentence) = 576 queries per mode, run in two modes: dense-only retrieval and hybrid retrieval (dense + BM25 sparse fused via Reciprocal Rank Fusion). Hybrid retrieval lifted Hit@5 for excerpt queries from 35.9% to **82.3%**.
 
-For full evaluation numbers, performance comparisons, and known limitations, please read the **[RAG Metrics Report](docs/metrics_and_evals/rag_metrics.md)**.
+The full evaluation report — per-query-type Hit@1/3/5, MRR, and known limitations — is in **[docs/rag_metrics.md](docs/rag_metrics.md)**. Note: the 46k-judgment corpus itself and the raw evaluation output files are not committed to this repository (both are git-ignored), so the experiments cannot be re-run from the repo alone; the numbers above come from the runs documented in the metrics report.
 
 ## Documentation
 
-Detailed technical documentation is available in the `docs/` directory, organized by category:
+Detailed technical documentation is available in the `docs/` directory:
 
-### Getting Started
-- [System Overview & Architecture](docs/getting_started/overview.md)
-- [Setup & Installation](docs/getting_started/setup_and_installation.md)
-
-### Architecture
-- [Data Flows & API Design](docs/architecture/data_flows.md)
-- [LangGraph Agent Orchestrator](docs/architecture/agent.md)
-- [Agent Decisions (Why a 10-node agent)](docs/architecture/agent_decisions.md)
-- [Database Schema & Migrations](docs/architecture/database.md)
-- [Chunking Strategy & Legal Section Logic](docs/architecture/chunking_strategy.md)
-
-### API & Integration
-- [API Reference](docs/api/api_reference.md)
-- [Rate Limiting (Token Budgets)](docs/api/rate_limiting.md)
-
-### Metrics & Evaluation
-- [Load & Performance Metrics](docs/metrics_and_evals/performance_metrics.md)
-- [RAG Search Accuracy Metrics](docs/metrics_and_evals/rag_metrics.md)
-- [Evaluation Methodology](docs/metrics_and_evals/evaluation_methodology.md)
-- [Redis Cache Performance](docs/metrics_and_evals/cache_metrics.md)
+- [System Overview & Architecture](docs/overview.md)
+- [Setup & Installation](docs/setup_and_installation.md)
+- [Local Demo Script (for evaluations)](docs/demo_script.md)
+- [Data Flows & API Design](docs/data_flows.md)
+- [LangGraph Agent Orchestrator](docs/agent.md)
+- [Database Schema & Migrations](docs/database.md)
+- [API Reference](docs/api_reference.md)
+- [RAG Search Accuracy Metrics](docs/rag_metrics.md)

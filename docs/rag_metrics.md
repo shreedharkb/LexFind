@@ -1,11 +1,13 @@
 # Retrieval-Augmented Generation (RAG) Metrics
 
-We conducted rigorous empirical evaluations of multiple vector search strategies to ensure high retrieval accuracy across our production corpus of **46,456 indexed Indian Supreme Court judgments** (approx. 1.1 million vector chunks). 
+We conducted empirical evaluations of multiple vector search strategies to measure retrieval accuracy across our indexed corpus of **46,456 Indian Supreme Court judgments** (approx. 1.1 million vector chunks). 
 
-The evaluation dataset consists of 192 distinct queries across three categories:
+The evaluation dataset consists of **192 randomly sampled judgments** queried in three ways per judgment (**576 queries per mode**):
 - **Query A (Excerpt):** Paragraphs extracted directly from the text.
 - **Query B (Title):** Searching using the exact case title.
-- **Query C (Topic):** Searching for abstract legal topics and precedents.
+- **Query C (Sentence):** Sentences extracted from the judgment text.
+
+The raw evaluation outputs and the sampled-judgment list are git-ignored, so the experiments cannot be re-run from this repository alone; the numbers below are the recorded results of those runs.
 
 ---
 
@@ -29,7 +31,7 @@ Initially, the system used a flat FAISS index. While fast on small datasets, it 
 ## 2. The Move to Qdrant (Dense Only)
 We migrated to Qdrant (HNSW index) to gain payload filtering and better scalability. However, evaluating pure Dense embeddings (`all-mpnet-base-v2`) on the **full 46k corpus** revealed the limitations of purely semantic search.
 
-| Metric | Query A (Excerpt) | Query B (Title) | Query C (Topic) |
+| Metric | Query A (Excerpt) | Query B (Title) | Query C (Sentence) |
 |--------|-------------------|-----------------|-----------------|
 | Hit@1  | 28.1%            | 2.6%            | 11.5%           |
 | Hit@3  | 32.3%            | 6.8%            | 18.8%           |
@@ -45,7 +47,7 @@ To solve the exact-match keyword problem inherent to pure dense vectors, we impl
 
 **Full 46k Corpus Performance (Hybrid RRF):**
 
-| Metric | Query A (Excerpt) | Query B (Title) | Query C (Topic) |
+| Metric | Query A (Excerpt) | Query B (Title) | Query C (Sentence) |
 |--------|-------------------|-----------------|-----------------|
 | Hit@1  | 48.4%            | 12.0%           | 43.2%           |
 | Hit@3  | 79.2%            | 21.9%           | 71.4%           |
@@ -57,7 +59,7 @@ To solve the exact-match keyword problem inherent to pure dense vectors, we impl
 By moving to **Hybrid RRF**, we saw massive improvements across all query types compared to Dense alone:
 - **Excerpt queries** Hit@5 jumped from 35.9% to **82.3%**
 - **Title queries** Hit@5 jumped from 8.9% to **26.0%**
-- **Topic queries** Hit@5 jumped from 19.8% to **74.5%**
+- **Topic (sentence) queries** Hit@5 jumped from 19.8% to **74.5%**
 
 **Current Limitations:**
 - **Short Title Queries:** Searching strictly by case titles without filters still has relatively low top-5 accuracy (26.0%). Because the corpus is massive, case titles share many common legal terms (e.g., "State of Maharashtra vs..."). Users searching for specific case names should utilize metadata filters (year, court) in the UI to narrow the semantic space.

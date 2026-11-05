@@ -1,6 +1,6 @@
 # LangGraph Agent
 
-The LangGraph agent (`lex_graph`) is the intelligence layer of LexFind. It replaces the original dual-branch if/else logic in `sessions.py` with a compiled state machine that classifies intent and routes every request to the correct retrieval and generation path.
+The LangGraph agent (`lex_graph`) is the intelligence layer of LexFind. Every chat request flows through a compiled 14-node state machine (`app/agents/graph.py`) that classifies the request, rewrites the query, retrieves, grades the retrieval, retries once with a different strategy when needed, and only then generates an answer.
 
 ## State
 
@@ -31,142 +31,127 @@ class LexFindState(TypedDict):
 
 ## Graph Topology
 
-```mermaid
-flowchart TD
-    classDef db fill:#d97706,stroke:#78350f,color:#fff
-    classDef llm fill:#db2777,stroke:#831843,color:#fff
-    classDef lgraph fill:#4f46e5,stroke:#312e81,color:#fff
-
-    subgraph LangGraph["lex_graph - LangGraph State Machine"]
-        State["Build LexFindState"]:::lgraph
-        Classifier["classifier_node - Intent + Guardrail"]:::lgraph
-        GeneralChat["general_chat - No Retrieval"]:::lgraph
-        DocChat["document_chat - Scoped RAG"]:::lgraph
-        CorpusSearch["corpus_search - Corpus Synthesis"]:::lgraph
-        Blocked["blocked - Guardrail Reject"]:::lgraph
-
-        State --> Classifier
-        Classifier -->|"intent=general"| GeneralChat
-        Classifier -->|"intent=document_chat"| DocChat
-        Classifier -->|"intent=corpus_search"| CorpusSearch
-        Classifier -->|"is_legal=false"| Blocked
-    end
-
-    GroqLLM["Groq API - llama-3.3-70b-versatile"]:::llm
-    PGVector["PostgreSQL pgvector - Private Embeddings"]:::db
-    Qdrant["Qdrant Vector Store - 46k Cases"]:::db
-    SSE["FastAPI SSE Streamer"]
-
-    Input["Incoming Request (FastAPI)"] --> State
-
-    Classifier <-->|"LLM Call 1 - JSON mode classify"| GroqLLM
-    GeneralChat <-->|"LLM Call 2 - no retrieval"| GroqLLM
-    
-    DocChat -->|"Cosine search by doc_id"| PGVector
-    DocChat -->|"Qdrant filter by doc_id"| Qdrant
-    DocChat <-->|"LLM Call 2 - context injected"| GroqLLM
-    
-    CorpusSearch -->|"Hybrid RRF top-15 deduplicated"| Qdrant
-    CorpusSearch <-->|"LLM Call 2 - context injected"| GroqLLM
-
-    GeneralChat -->|"answer"| SSE
-    DocChat -->|"answer + citations"| SSE
-    CorpusSearch -->|"answer + citations"| SSE
-    Blocked -->|"rejection message"| SSE
 ```
+classifier
+    ├── blocked            → END
+    ├── general            → general_chat        → END
+    ├── general_summary    → general_summary     → END
+    ├── document_chat      → query_enhancement ─┐
+    └── corpus_search      → query_enhancement ─┤
+                                                 ↓
+                                        qdrant_retrieval / document_retrieval
+                                                 ↓
+                                          retrieval_grader
+                                    (pass)  /  (fail, 1st retry)  \  (exhausted)
+                                           /                        \
+                                    recency_check        corpus/document re-retrieval
+                                      /      \                     ↓
+                              web_augment   └──→ response_generation ← graceful_degradation
+                                   ↓                  ↓
+                              response_generation   END
+```
+
+1. **classifier** — one LLM call (gpt-oss-120b, temperature 0, JSON mode) labels the request `blocked`, `general`, `general_summary`, `document_chat` or `corpus_search`. If a document is explicitly attached, the LLM call is skipped and the request routes to document chat.
+2. **blocked / general_chat / general_summary** — non-legal rejection, plain legal Q&A, and multi-message summarisation without retrieval.
+3. **query_enhancement** — a rewriter (gpt-oss-20b) turns the message plus recent history into a standalone query and flags recent-law cues.
+4. **qdrant_retrieval / document_retrieval** — hybrid dense+BM25 search over the shared corpus, or retrieval scoped to the attached document (Qdrant for corpus cases, pgvector for private uploads, after an ownership check).
+5. **retrieval_grader** — a small model (gpt-oss-20b) judges whether the retrieved passages answer the question and returns a reason (`too_specific`, `wrong_domain`, `no_coverage`) when they do not. If the grader call fails, the results are accepted.
+6. **corpus_re_retrieval / document_re_retrieval** — one retry with a different strategy: `too_specific` relaxes the query, `wrong_domain` searches sparse-only, anything else searches dense-only.
+7. **graceful_degradation** — after a failed retry, the pipeline continues with a disclaimer in the prompt.
+8. **recency_check / web_augment** — if recent-law cues were flagged and a Tavily key is configured, up to three web results are appended.
+9. **response_generation** — builds the grounded prompt from the chunks, web results, optional disclaimer and the last messages.
 
 Compiled in `app/agents/graph.py` as a module-level singleton `lex_graph = build_graph()`.
 
-## Node 1: classifier
+## LLM usage
+
+| Request path | LLM calls (typical) |
+|---|---|
+| Blocked | 1 (classifier) |
+| General question | 2 (classifier + answer) |
+| Document chat | 3–5 |
+| Corpus search | 4–6 |
+| First message of a session | +1 (title generation) |
+
+The final answer itself is streamed token-by-token by the API layer (Groq `stream=True`) after the graph finishes; citations are emitted before the `[DONE]` marker and are built entirely from retrieval payload metadata, never from LLM output.
+
+## classifier
 
 **File:** `app/agents/nodes/classifier.py`
 
-**Purpose:** Does two things in a single LLM call:
-1. Determines if the question is in the legal domain (guardrail).
-2. Classifies the user's intent.
+**Purpose:** One LLM call that both guards the legal domain and classifies the request's intent.
 
 **Fast-path override:** If `explicit_mode` is "document" or "corpus", the LLM call is skipped entirely and the intent is set directly.
 
-**LLM call:** One Groq call with `response_format={"type": "json_object"}`, `temperature=0.0`, `max_tokens=100`. Returns:
-```json
-{
-  "is_legal": true,
-  "intent": "corpus_search",
-  "reasoning": "User is asking about multiple cases"
-}
-```
-
-**Routing function (`route_after_classifier`):**
-- `is_legal=false` -> "blocked"
-- `intent="general"` -> "general_chat"
-- `intent="document_chat"` -> "document_chat"
-- `intent="corpus_search"` -> "corpus_search"
+**Routing (`route_after_classifier`):**
+- `blocked` -> blocked
+- `general` -> general_chat
+- `general_summary` -> general_summary
+- `document_chat` -> query_enhancement
+- `corpus_search` -> query_enhancement
 
 **Edge cases handled:**
-- If intent is "document_chat" but `document_ids` is empty, falls back to "corpus_search".
-- If the Groq call fails, defaults to "general" with error logged.
-- Intent values outside the known set are normalized to "general".
+- If intent is "document_chat" but `document_ids` is empty, it falls back to "corpus_search".
+- If the Groq call fails, it defaults to "general" with the error logged.
 
 **Intent classification rules:**
-- `general`: pure legal knowledge question, no document search required. Example: "What is Article 21?"
-- `document_chat`: question is specifically about attached documents. Only classified here if `document_ids` is non-empty.
-- `corpus_search`: question requires searching across multiple cases. Example: "How has the Supreme Court ruled on right to privacy?"
-- Non-legal topics (coding, sports, weather, cooking) classify as `is_legal=false`.
+- `general`: pure legal knowledge question, no retrieval required. Example: "What is Article 21?"
+- `general_summary`: summarise or condense the conversation so far.
+- `document_chat`: question about attached documents. Only classified here if `document_ids` is non-empty.
+- `corpus_search`: question that needs searching across cases. Example: "How has the Supreme Court ruled on right to privacy?"
+- Non-legal topics classify as `blocked`.
 
-## Node 2A: general_chat
+## general_chat
 
 **File:** `app/agents/nodes/general_chat.py`
 
-**Purpose:** Answers pure legal knowledge questions with no retrieval.
+**Purpose:** Builds the prompt for pure legal knowledge questions with no retrieval; the answer itself is generated and streamed by the API layer.
 
-**Input used:** `question`, `history`
+**Output:** `prompt_messages` for the response node. No citations or retrieved chunks.
 
-**LLM call:** One Groq call at `temperature=0.3`, `max_tokens=1024`. System prompt positions the AI as an Indian legal expert. Conversation history is included for follow-up context.
-
-**Output:** `answer` string. `citations` and `retrieved_chunks` are empty lists.
-
-## Node 2B: document_chat
+## document_chat
 
 **File:** `app/agents/nodes/document_chat.py`
 
-**Purpose:** Retrieves chunks from attached session documents and generates a grounded answer.
+**Purpose:** Retrieves chunks from attached session documents; the answer is generated later by the response node.
 
 **Retrieval routing per document:**
 
-| `source_type` | Vector Store | Method |
+| `source_type` | Vector store | Method |
 |---|---|---|
-| `legal_case` | Qdrant | Filtered search by `document_id` in `legal_corpus` collection, limit 8 |
-| `uploaded` | pgvector | Raw SQL cosine search filtered by `document_id`, limit 8 |
+| `legal_case` | Qdrant | Hybrid search filtered by corpus `document_id`, limit 8 |
+| `uploaded` | pgvector | Cosine search filtered by `document_id`, limit 8 |
 
 The node iterates over all `document_ids` in state, fetches chunks from each, and concatenates them into one context block. This allows multi-document RAG in a single session.
 
+**Ownership re-check:** `legal_case` documents are public by design; uploaded documents are usable only by their owner, and an uploaded document with no owner is never accessible.
+
 **Citation construction:** Built directly from the chunk payload/row without any LLM call:
-- Qdrant chunks: `document_id`, `chunk_id`, `title`, `court`, `year`, `citation`, `score`
-- pgvector chunks: `document_id`, `chunk_id`, `title`, `page_number`, `filename`, `score`
+- Qdrant chunks: `document_id`, `chunk_id`, `title`, `court`, `year`, `citation`, `source_type = legal_case`, `score`
+- pgvector chunks: `document_id`, `chunk_id`, `title`, `page_number`, `filename`, `source_type = uploaded`, `score`
 
-**LLM call:** One Groq call at `temperature=0.1`, `max_tokens=1500`. The system prompt instructs the model to answer using only the provided source blocks and to cite inline as `[Case Name, Year]`.
-
-## Node 2C: corpus_search
+## corpus_search
 
 **File:** `app/agents/nodes/corpus_search.py`
 
-**Purpose:** Searches the full 46k-case Qdrant corpus and synthesises a multi-case answer.
+**Purpose:** Searches the full 46k-case Qdrant corpus and prepares the grounded context for the response node.
 
 **Retrieval:**
-1. Embeds the question using the shared `_embedder.embed()` helper.
-2. Queries Qdrant (`legal_corpus`) without any document filter, limit 15.
-3. Deduplicates results by `document_id`: keeps the highest-scoring chunk per document.
-4. Takes the top 5 unique documents.
+1. Hybrid dense+BM25 query against Qdrant (`legal_corpus_hybrid`), limit 15.
+2. Deduplicates results by `document_id`: keeps the highest-scoring chunk per document.
+3. Takes the top 5 unique documents.
 
-**Citation construction:** Same pattern as Node 2B — built from Qdrant payload.
+**Citation construction:** Built from the Qdrant payload with `source_type = legal_case`; chunk text is fetched from PostgreSQL.
 
-**LLM call:** One Groq call at `temperature=0.2`, `max_tokens=1800`. System prompt positions the model as a senior Indian legal expert synthesising across multiple judgments.
+## Other nodes
 
-## Node: blocked
-
-**File:** `app/agents/graph.py` (inline function)
-
-**Purpose:** Handles non-legal questions. Sets a fixed rejection message in `state["answer"]` and routes to END. No LLM call.
+- **query_enhancement** (`app/agents/nodes/query_enhancement.py`) — rewrites the query into a standalone form (gpt-oss-20b).
+- **retrieval_grader** (`app/agents/nodes/retrieval_grader.py`) — grades the retrieved passages (gpt-oss-20b); fails open on LLM errors.
+- **corpus_re_retrieval / document_re_retrieval** — the single retry with an alternative search strategy.
+- **recency_check / web_augment** — optional Tavily web search for recent-law questions.
+- **graceful_degradation** — adds a disclaimer to the prompt after exhausted retries.
+- **response_generation** (`app/agents/nodes/response_generation.py`) — builds the final grounded prompt for the streamed answer.
+- **blocked** (inline in `app/agents/graph.py`) — fixed rejection message, no LLM call.
 
 ## Shared Utilities
 
@@ -178,30 +163,11 @@ Returns a module-level `QdrantClient` singleton. Connection parameters from `QDR
 
 ## FastAPI Integration
 
-The `send_message` endpoint in `app/api/sessions.py` drives the graph:
+The `send_message` endpoint in `app/api/sessions.py` runs the compiled graph in a thread pool, then streams the answer from Groq (`stream=True`) token by token over SSE:
 
-```python
-    async def generate():
-        final_answer    = ""
-        final_citations = []
+1. token events `data: {"content": ...}` (or a single direct-answer event for blocked/error paths),
+2. a `citations` event carrying the retrieved sources,
+3. `data: [DONE]`,
+4. the assistant message is persisted to PostgreSQL.
 
-        try:
-            final_state     = await lex_graph.ainvoke(initial_state)
-            final_answer    = final_state.get("answer", "")
-            final_citations = final_state.get("citations", [])
-
-            if final_answer:
-                yield f"data: {json.dumps({'content': final_answer})}\n\n"
-            else:
-                yield f"data: {json.dumps({'content': 'No response was generated. Please try again.'})}\n\n"
-
-        except Exception as exc:
-            yield f"data: {json.dumps({'content': '[Server busy. Please try again in a moment.]'})}\n\n"
-
-        yield "data: [DONE]\n\n"
-
-        if final_citations:
-            yield f"event: citations\ndata: {json.dumps(final_citations)}\n\n"
-```
-
-Because nodes use synchronous raw Groq API calls (`stream=False`), we use `ainvoke()` to run the full graph and return the final state, then emit the complete answer as a single SSE chunk. If true token-by-token streaming is required in the future, the nodes must be rewritten to use `ChatGroq` with LangChain streaming enabled, at which point the API could switch back to `astream_events`.
+Because the graph nodes use synchronous Groq calls, the graph itself is executed with `await loop.run_in_executor(...)`; only the final answer is streamed. This means classification, retrieval, grading and any retry happen before the first answer token appears.

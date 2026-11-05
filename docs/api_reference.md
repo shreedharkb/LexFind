@@ -62,8 +62,8 @@ Retrieve the full message history for a session. Protected.
 Response: list of `{ id, role, message_type, content, citations, created_at }`
 
 The `citations` field is a JSON array of objects. Format depends on source:
-- Corpus/Qdrant: `{ document_id, chunk_id, title, court, year, citation, score }`
-- Uploaded/pgvector: `{ document_id, chunk_id, title, page_number, filename, score }`
+- Corpus/Qdrant: `{ document_id, chunk_id, title, court, year, citation, score, source_type: "legal_case" }`
+- Uploaded/pgvector: `{ document_id, chunk_id, title, page_number, filename, score, source_type: "uploaded" }`
 
 ### POST /api/sessions/{session_id}/messages
 Send a message to the AI and receive an SSE stream response. Protected.
@@ -80,9 +80,9 @@ Response: `text/event-stream` (SSE)
 SSE event format:
 ```
 data: {"content": "token..."}     <- streamed per chunk
-data: [DONE]                       <- signals stream complete
 event: citations
 data: [{"title": "...", ...}]      <- only if citations exist
+data: [DONE]                       <- signals stream complete
 ```
 
 ---
@@ -180,6 +180,9 @@ Find cases similar to a given case.
 
 ### POST /api/search/ask
 Ask a question directly against the corpus search service.
+
+### GET /api/search/pdf/{document_id}
+Serve a corpus case PDF inline. Accepts the case UUID (resolved via `legal_documents`) or the raw filename. Intentionally unauthenticated so the viewer modal and download links work from blob URLs.
 
 ---
 

@@ -10,7 +10,7 @@ User types a legal query in the Search page and clicks Search.
 
 1. React calls `POST /api/cases/search` with `{ query, filters }`.
 2. The `search.py` router embeds the query into both a Dense vector (via `SentenceTransformer` `all-mpnet-base-v2`, 768-dim) and a Sparse BM25 vector.
-3. Both vectors are sent to Qdrant (`legal_corpus` collection) using a **Hybrid RRF (Reciprocal Rank Fusion)** query. Metadata filters (court, year, etc.) are applied at the Qdrant layer.
+3. Both vectors are sent to Qdrant (`legal_corpus_hybrid` collection) using a **Hybrid RRF (Reciprocal Rank Fusion)** query. Metadata filters (court, year, etc.) are applied at the Qdrant layer.
 4. Qdrant fuses the semantic and keyword matches and returns raw chunk hits with scores and payload.
 5. The service groups hits by `document_id` and queries the `legal_documents` table (PostgreSQL) to hydrate full case metadata (title, court, year, citation).
 6. A `SearchResponse` JSON is returned and React renders ranked case cards.
@@ -29,7 +29,7 @@ User clicks "Analyze in Assistant" on a search result card.
 4. Returns `{ session_id, document_id }`.
 5. React navigates to `/chat/{session_id}`.
 
-The corpus PDF is served via `GET /api/documents/{id}/pdf` directly from local storage — no re-processing.
+Corpus PDFs are served via `GET /api/search/pdf/{id}` (accepts the case UUID or filename, no auth) directly from local storage or Azure Blob — no re-processing.
 
 ---
 
@@ -66,7 +66,7 @@ User types a question in an active session and presses Enter.
 4. If the session title is still "New Session", it is auto-renamed to the first 40 characters of the question.
 5. The backend loads the last 6 messages from the session as conversation history.
 6. The backend fetches all attached `document_ids` from `session_documents`.
-7. The `LexFindState` dict is assembled and passed to `lex_graph.astream_events`.
+7. The `LexFindState` dict is assembled and the graph is executed synchronously via `run_in_threadpool(lex_graph.invoke, ...)` — the graph nodes themselves are synchronous.
 
 **Inside LangGraph:**
 
@@ -76,31 +76,27 @@ User types a question in an active session and presses Enter.
 - If `is_legal=false`, routes to `blocked` node which sets a rejection message and ends.
 - Otherwise routes to `general_chat`, `document_chat`, or `corpus_search`.
 
-**Node 2A — general_chat_node** (intent = "general")
-- Assembles messages: system prompt + history + question.
-- Makes one Groq call at `temperature=0.3`.
-- Returns `answer`, no citations.
+**Pipeline nodes** (see [agent.md](agent.md) for the full 14-node topology)
+- `query_enhancement` may rewrite the query (one optional LLM call).
+- `general_chat_node` (intent = "general"): builds `prompt_messages` from system prompt + history + question. No retrieval.
+- `document_chat_node` (intent = "document_chat"):
+  - For each attached document:
+    - If `source_type="legal_case"`: queries Qdrant with a `document_id` filter, limit 8.
+    - If `source_type="uploaded"`: queries pgvector via raw SQL with a `document_id` filter, limit 8.
+  - Builds citations directly from chunk payload/row data.
+  - Builds `prompt_messages` with the retrieved context blocks.
+- `corpus_search_node` (intent = "corpus_search"):
+  - Embeds the question into Dense and Sparse vectors and queries Qdrant using **Hybrid RRF** without any document filter, limit 15.
+  - Deduplicates results by `document_id`, keeping the highest-scoring chunk per document, and takes the top 5 unique documents.
+  - Builds citations from Qdrant payload.
+- `retrieval_grader` grades the retrieved chunks (one LLM call) and may trigger one re-retrieval with an alternative strategy (`corpus_re_retrieval_node`).
+- `web_augment` optionally runs a Tavily search for recency-sensitive queries (requires `TAVILY_API_KEY`).
+- The final node builds the complete `prompt_messages` for answer generation. The nodes themselves do not call the LLM for the final answer — the API layer does.
 
-**Node 2B — document_chat_node** (intent = "document_chat")
-- For each attached document:
-  - If `source_type="legal_case"`: queries Qdrant with a `document_id` filter, limit 8.
-  - If `source_type="uploaded"`: queries pgvector via raw SQL with a `document_id` filter, limit 8.
-- Builds citations directly from chunk payload/row data.
-- Assembles context blocks and makes one Groq call at `temperature=0.1`.
-- Returns `answer`, `citations`, `retrieved_chunks`.
-
-**Node 2C — corpus_search_node** (intent = "corpus_search")
-- Embeds the question into Dense and Sparse vectors and queries Qdrant using **Hybrid RRF** without any document filter, limit 15.
-- Deduplicates results by `document_id`, keeping the highest-scoring chunk per document.
-- Takes the top 5 unique documents.
-- Builds citations from Qdrant payload.
-- Makes one Groq call at `temperature=0.2`.
-- Returns `answer`, `citations`, `retrieved_chunks`.
-
-8. As Groq generates tokens, `astream_events` emits `on_chat_model_stream` events. FastAPI yields each token as `data: {"content": "..."}` SSE.
-9. After the graph completes, FastAPI yields `data: [DONE]`.
-10. If citations exist, FastAPI yields `event: citations\ndata: [...]`.
-11. The complete answer and citations are saved to the `messages` table with `role="assistant"`.
+8. Back in the API layer, if the graph produced `prompt_messages`, the answer is generated with the Async Groq client (`stream=True`) and each token is yielded as `data: {"content": "..."}` SSE.
+9. If citations exist, FastAPI yields `event: citations\ndata: [...]`.
+10. FastAPI yields `data: [DONE]`.
+11. The complete answer and citations are saved to the `messages` table with `role="assistant"`, and after the first exchange an LLM-generated session title replaces the placeholder title.
 
 ---
 
@@ -108,12 +104,12 @@ User types a question in an active session and presses Enter.
 
 User clicks "View PDF" on a citation pill or document card.
 
-1. React opens `GET /api/documents/{document_id}/pdf`.
-2. Backend fetches the `Document` record and checks authorization:
-   - Corpus cases (`owner_id=null`): accessible to any authenticated user.
+1. Corpus cases: React opens `GET /api/search/pdf/{id}` (case UUID or filename, no auth). Uploaded documents: React opens `GET /api/documents/{document_id}/pdf` (auth required).
+2. The documents route fetches the `Document` record and checks authorization:
+   - Corpus cases (`source_type="legal_case"`): accessible to any authenticated user.
    - Uploaded docs: accessible only to `owner_id`.
-3. `BlobStorageService.download_pdf` retrieves bytes from Azure or local disk.
-4. Returns a `StreamingResponse` with `Content-Disposition: inline` so the browser renders the PDF natively in the viewer modal.
+3. The backend retrieves bytes from local storage or Azure Blob.
+4. Returns the PDF with `Content-Disposition: inline` so the browser renders it natively in the viewer modal.
 
 ---
 
