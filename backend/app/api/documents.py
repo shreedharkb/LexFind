@@ -92,8 +92,8 @@ def get_document_status(
     doc = doc_repo.get_document(db, document_id)
     if not doc:
         raise HTTPException(status_code=404, detail="Document not found")
-        
-    if doc.owner_id is not None and doc.owner_id != uuid.UUID(user_id):
+
+    if doc.source_type != "legal_case" and doc.owner_id != uuid.UUID(user_id):
         raise HTTPException(status_code=403, detail="Not authorized to access this document")
         
     return doc
@@ -109,7 +109,7 @@ def serve_document_pdf(
     if not doc:
         raise HTTPException(status_code=404, detail="Document not found.")
 
-    if doc.owner_id is not None and doc.owner_id != uuid.UUID(user_id):
+    if doc.source_type != "legal_case" and doc.owner_id != uuid.UUID(user_id):
         raise HTTPException(status_code=403, detail="Not authorized to access this document.")
 
     try:

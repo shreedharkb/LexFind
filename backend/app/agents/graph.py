@@ -177,7 +177,7 @@ def build_graph() -> StateGraph:
     graph.add_edge("response_generation", END)
 
     compiled = graph.compile()
-    logger.info("LexFind LangGraph compiled successfully (full 13-node pipeline).")
+    logger.info("LexFind LangGraph compiled successfully (full 14-node pipeline).")
     return compiled
 
 

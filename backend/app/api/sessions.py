@@ -148,7 +148,7 @@ async def attach_document(
     doc = doc_repo.get_document(db, request.document_id)
     if not doc:
         raise HTTPException(status_code=404, detail="Document not found")
-    if doc.owner_id is not None and doc.owner_id != uuid.UUID(user_id):
+    if doc.source_type != "legal_case" and doc.owner_id != uuid.UUID(user_id):
         raise HTTPException(status_code=403, detail="Not authorized to attach this document")
 
     sd_repo.attach_document(db, session.id, doc.id)
@@ -299,10 +299,10 @@ async def send_message(
             logger.error("Streaming error: %s", exc, exc_info=True)
             yield f"data: {json.dumps({'content': '[Server busy. Please try again in a moment.]'})}\n\n"
 
-        yield "data: [DONE]\n\n"
-
         if final_citations:
             yield f"event: citations\ndata: {json.dumps(final_citations)}\n\n"
+
+        yield "data: [DONE]\n\n"
 
         # Persist assistant message
         if final_answer:

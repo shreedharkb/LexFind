@@ -53,6 +53,7 @@ def _build_chunks(results: list, chunk_texts: dict) -> list:
             "court":       r.payload.get("court") or "",
             "year":        r.payload.get("year") or "",
             "citation":    r.payload.get("citation") or "",
+            "source_type": "legal_case",
             "score":       r.score,
         }
         for r in results
@@ -70,6 +71,7 @@ def _build_citations(chunks: list) -> list:
             "court":          c["court"],
             "year":           c["year"],
             "citation":       c["citation"],
+            "source_type":    c["source_type"],
             "score":          c["score"],
             "excerpt":        txt[:200] + "..." if len(txt) > 200 else txt,
         })

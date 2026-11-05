@@ -196,33 +196,40 @@ function Message({ msg, token, onViewPdf, onDownloadPdf }) {
         {/* Citations */}
         {hasCitations && (
           <div className="mt-4 pt-3 border-t border-gray-100">
-            <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-2">Sources Cited</p>
+            <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-2">Retrieved Sources</p>
             <div className="grid grid-cols-1 gap-2">
-              {msg.citations.map((cite, idx) => (
+              {msg.citations.map((cite, idx) => {
+                const citeUrl = cite.source_type === 'legal_case'
+                  ? getPdfUrl(cite.document_id)
+                  : getDocumentPdfUrl(cite.document_id);
+                return (
                 <div key={idx} className="bg-gray-50 border border-gray-200 rounded-xl p-2.5 hover:bg-amber-50/50 hover:border-amber-200 transition-all">
                   <div className="flex items-center gap-2 mb-1">
                     <BookOpen className="h-3.5 w-3.5 text-amber-600 shrink-0" />
                     <span className="text-[11px] font-semibold text-gray-700 truncate">{cite.document_title}</span>
-                    <span className="text-[10px] text-gray-400 bg-white px-1.5 py-0.5 rounded border border-gray-100 ml-auto shrink-0">Page {cite.page_number}</span>
+                    {cite.page_number != null && (
+                      <span className="text-[10px] text-gray-400 bg-white px-1.5 py-0.5 rounded border border-gray-100 ml-auto shrink-0">Page {cite.page_number}</span>
+                    )}
                   </div>
                   <p className="text-[11px] text-gray-500 italic line-clamp-2 leading-snug mb-2">"{cite.excerpt}..."</p>
                   
                   <div className="flex items-center gap-2 mt-2">
                     <button 
-                      onClick={() => onViewPdf(getDocumentPdfUrl(cite.document_id), cite.document_title)}
+                      onClick={() => onViewPdf(citeUrl, cite.document_title)}
                       className="flex items-center gap-1.5 px-2 py-1 rounded-md bg-white border border-gray-200 text-[10px] font-medium text-gray-600 hover:border-amber-300 hover:text-amber-700 transition-all shadow-sm"
                     >
                       <Eye className="h-3 w-3" /> View Source
                     </button>
                     <button 
-                      onClick={() => onDownloadPdf(getDocumentPdfUrl(cite.document_id), cite.document_title, token)}
+                      onClick={() => onDownloadPdf(citeUrl, cite.document_title, token)}
                       className="flex items-center gap-1.5 px-2 py-1 rounded-md bg-white border border-gray-200 text-[10px] font-medium text-gray-600 hover:border-gray-400 transition-all shadow-sm"
                     >
                       <DownloadCloud className="h-3 w-3" /> Download
                     </button>
                   </div>
                 </div>
-              ))}
+                );
+              })}
             </div>
           </div>
         )}

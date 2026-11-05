@@ -24,7 +24,7 @@ services:
 
   # ── Qdrant Vector DB ────────────────────────────────────
   qdrant:
-    image: qdrant/qdrant:latest
+    image: qdrant/qdrant:v1.12.6
     container_name: lexfind_qdrant
     restart: always
     ports:

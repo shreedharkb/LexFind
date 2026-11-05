@@ -204,7 +204,7 @@ async def get_case(case_id: str):
     - **case_id**: The stable case identifier (typically the PDF filename)
     """
     base_url = os.getenv("VITE_API_BASE_URL", "")
-    pdf_url = f"{base_url}/api/pdf/{case_id}"
+    pdf_url = f"{base_url}/api/search/pdf/{case_id}"
 
     return CaseDetailResponse(
         case_id=case_id,

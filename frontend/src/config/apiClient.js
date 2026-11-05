@@ -6,9 +6,9 @@
 
 export const BASE = import.meta.env.VITE_API_BASE_URL ?? '';
 
-/** Get the full URL for serving a corpus case PDF (search page — no auth needed). */
-export const getPdfUrl = (filename) =>
-  `${BASE}/api/search/pdf/${encodeURIComponent(filename)}`;
+/** Get the full URL for serving a corpus case PDF (case UUID or filename — no auth needed). */
+export const getPdfUrl = (caseId) =>
+  `${BASE}/api/search/pdf/${encodeURIComponent(caseId)}`;
 
 /** Get the full URL for serving any document PDF (assistant citations — requires auth token). */
 export const getDocumentPdfUrl = (documentId) =>

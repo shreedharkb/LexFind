@@ -117,13 +117,15 @@ def _build_citations(chunks: List[Dict]) -> List[Dict]:
                 "document_id": c.get("document_id"), "chunk_id": c.get("chunk_id"),
                 "document_title": c.get("title"), "court": c.get("court"),
                 "year": c.get("year"), "citation": c.get("citation"),
+                "source_type": "legal_case",
                 "score": c.get("score"), "excerpt": excerpt,
             })
         else:
             citations.append({
                 "document_id": c.get("document_id"), "chunk_id": str(c.get("chunk_id")),
                 "document_title": c.get("title"), "page_number": c.get("page_number"),
-                "filename": c.get("blob_path"), "score": c.get("score"), "excerpt": excerpt,
+                "filename": c.get("blob_path"), "source_type": "uploaded",
+                "score": c.get("score"), "excerpt": excerpt,
             })
     return citations
 
@@ -159,7 +161,10 @@ def document_chat_node(state: LexFindState) -> LexFindState:
             for doc_id in doc_ids:
                 doc = db.query(Document).filter(Document.id == doc_id).first()
                 if not doc: continue
-                if doc.owner_id is not None and doc.owner_id != caller_id:
+                # legal_case documents are public; uploaded documents require the
+                # caller to be the owner (an orphaned upload with owner_id=None
+                # is never accessible).
+                if doc.source_type != "legal_case" and doc.owner_id != caller_id:
                     logger.warning(
                         "DocumentChat denied access to document %s for user %s",
                         doc_id,
