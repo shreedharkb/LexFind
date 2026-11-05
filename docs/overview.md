@@ -1,6 +1,6 @@
 # System Overview
 
-LexFind is a legal research platform built over 46,456 indexed Indian Supreme Court judgments. It provides semantic search, persistent chat sessions, document-specific RAG, and full-corpus synthesis — all orchestrated by a LangGraph agent that routes each request to the appropriate execution path.
+LexFind is a legal research platform built over 46,865 indexed judgments (44,958 tagged Supreme Court). It provides semantic search, persistent chat sessions, document-specific RAG, and full-corpus synthesis — all orchestrated by a LangGraph agent that routes each request to the appropriate execution path.
 
 ## High-Level Architecture
 

@@ -16,7 +16,7 @@ A practical walkthrough for demonstrating LexFind locally (e.g. for a project ev
 Log in / register. Point out that the API is fully authenticated with JWT, sessions are isolated per user, and the rate limiter is per-user.
 
 ### Step 2 — Semantic search (60 seconds)
-Run a natural-language query, e.g. *"right to privacy and fundamental rights"*. Explain: the query is embedded with `all-mpnet-base-v2` and searched against 46,456 judgments in Qdrant with **hybrid retrieval** (dense + BM25 sparse fused via Reciprocal Rank Fusion). Show:
+Run a natural-language query, e.g. *"right to privacy and fundamental rights"*. Explain: the query is embedded with `all-mpnet-base-v2` and searched against 46,865 judgments in Qdrant with **hybrid retrieval** (dense + BM25 sparse fused via Reciprocal Rank Fusion). Show:
 - the ranked results with court, year, and similarity score;
 - the **Keyword Search** toggle (pure BM25) and the **party name / case title** toggle;
 - the **Court / State / Case Type / Year** filters narrowing results.
@@ -42,7 +42,7 @@ Optional extras, time permitting:
 
 | Symptom | Likely cause | What to do / say |
 |---|---|---|
-| Search returns no results or an error | Qdrant container down, or corpus not loaded | Restart Qdrant (`docker compose restart qdrant`). The corpus lives outside the repo in the git-ignored `data/` dir; if it was never loaded, demo search is unavailable — switch to Steps 4–6 with uploaded PDFs and say corpus indexing ran during development (46,456 judgments, ~1.16M chunks). |
+| Search returns no results or an error | Qdrant container down, or corpus not loaded | Restart Qdrant (`docker compose restart qdrant`). The corpus lives outside the repo in the git-ignored `data/` dir; if it was never loaded, demo search is unavailable — switch to Steps 4–6 with uploaded PDFs and say corpus indexing ran during development (46,865 judgments, 1,162,730 chunks). |
 | Chat hangs or errors | Groq API key missing / quota exhausted | Check `backend/.env` `GROQ_API_KEY`; the free tier has daily limits. Say LLM inference is via Groq's API, which needs internet + an API key. |
 | Uploaded PDF stuck at "processing" | Celery worker down | Restart the worker (`docker compose restart celery-worker`). On Windows without Docker, run Celery with `-P solo`. |
 | PDF viewer blank | CORS / blob fetch issue | The modal fetches the PDF as a blob with the JWT — hard-refresh the page; if it persists, demonstrate downloads instead. |

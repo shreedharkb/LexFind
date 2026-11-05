@@ -1,6 +1,6 @@
 # Retrieval-Augmented Generation (RAG) Metrics
 
-We conducted empirical evaluations of multiple vector search strategies to measure retrieval accuracy across our indexed corpus of **46,456 Indian Supreme Court judgments** (approx. 1.1 million vector chunks). 
+We conducted empirical evaluations of multiple vector search strategies to measure retrieval accuracy across our indexed corpus of **46,865 indexed judgments (44,958 tagged Supreme Court)** (approx. 1.1 million vector chunks). 
 
 The evaluation dataset consists of **192 randomly sampled judgments** queried in three ways per judgment (**576 queries per mode**):
 - **Query A (Excerpt):** Paragraphs extracted directly from the text.

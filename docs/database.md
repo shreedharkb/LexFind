@@ -73,7 +73,7 @@ The `pgvector` table for semantic search on user uploads.
 While `pgvector` handles private, ephemeral user uploads, **Qdrant** is the workhorse for the global corpus search. 
 
 ### Collection: `legal_corpus`
-This collection holds **1.1 million vector chunks** generated from 46,456 Indian Supreme Court judgments. 
+This collection holds **1.1 million vector chunks** generated from 46,865 indexed judgments (44,958 tagged Supreme Court). 
 
 - **Dense Vectors**: 768-dimensional float vectors (`all-mpnet-base-v2`).
 - **Sparse Vectors**: BM25 keyword vectors.

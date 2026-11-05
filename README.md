@@ -1,6 +1,6 @@
 # LexFind
 
-AI-powered legal research and conversational analysis platform. Search across 46,000+ indexed Indian Supreme Court judgments using semantic similarity, chat with specific cases or your own uploaded PDFs, and ask general legal questions — all from a single persistent workspace backed by a LangGraph agent orchestrator.
+AI-assisted legal research and conversational analysis over Indian case law. Search 46,865 indexed judgments (44,958 tagged Supreme Court) by meaning or by exact words, chat with a specific case or with a PDF you upload, and ask general legal questions — one persistent workspace, orchestrated by a LangGraph agent.
 
 ## Table of Contents
 
@@ -16,7 +16,7 @@ AI-powered legal research and conversational analysis platform. Search across 46
 ## Features
 
 **Semantic Search**
-Natural language search over 46,456 pre-indexed Indian Supreme Court judgments. Queries are embedded using `sentence-transformers/all-mpnet-base-v2` and searched against a Qdrant vector database (1.1M+ vectors) with hybrid retrieval — dense vectors fused with BM25 sparse vectors via Reciprocal Rank Fusion. Results include metadata filters for court, year, state, and case type.
+Natural language search over 46,865 pre-indexed judgments (44,958 tagged Supreme Court, plus a small High Court and unlabelled tail). Queries are embedded using `sentence-transformers/all-mpnet-base-v2` and searched against a Qdrant vector database (1,162,730 chunk vectors) with hybrid retrieval — dense vectors fused with BM25 sparse vectors via Reciprocal Rank Fusion. Results include metadata filters for court, year, state, and case type.
 
 **Agentic RAG Chat**
 Every chat request flows through a 14-node LangGraph state machine that classifies intent, guards against off-topic input, and routes to one of four execution paths: general legal knowledge, a summary of a named case, statute or concept, document-specific RAG, or full corpus search (a fifth terminal node rejects off-topic requests). The number of LLM calls varies by path (see [docs/agent.md](docs/agent.md) for the per-path breakdown and the node list). Before answering, the agent rewrites the query, retrieves, grades the retrieved passages with a second model, and retries once with an adapted strategy when the grade is low. Citations are built directly from Qdrant payload metadata — no LLM extraction.

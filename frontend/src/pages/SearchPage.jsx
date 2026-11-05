@@ -417,7 +417,7 @@ function SearchPage() {
 
           {/* Mode badges */}
           <div className="max-w-3xl mx-auto px-1 mt-1.5 flex flex-wrap gap-2">
-            {isKeywordMode && <p className="text-xs text-amber-600">Exact keyword matches from our 46,456 case corpus</p>}
+            {isKeywordMode && <p className="text-xs text-amber-600">Exact keyword matches from our 46,865 case corpus</p>}
             {isNameMode && <p className="text-xs text-blue-600">Searching by party name / case title</p>}
           </div>
 
