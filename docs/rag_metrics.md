@@ -43,7 +43,9 @@ sampling.
 
 * **Dense** -- vector search on the `all-mpnet-base-v2` named vector.
 * **Sparse** -- vector search on the `Qdrant/bm25` named sparse vector.
-* **Hybrid RRF** -- both, fused by Reciprocal Rank Fusion inside Qdrant.
+* **Hybrid RRF** -- both, fused inside Qdrant by Reciprocal Rank Fusion with the
+  library's default constant, `k = 60` (neither `app/services/qdrant_search_service.py`
+  nor the harness overrides it).
 
 ## Results
 
@@ -131,10 +133,26 @@ three assertions pass on the running index:
    better at the head: excerpt Hit@1 70.3% vs 45.3%, MRR 0.546 vs 0.446. RRF is under-weighting
    the list that ranks best, which is where a cross-encoder re-ranker or a re-tuned fusion
    constant would pay.
-5. **Title queries stay lowest for every mode.** A case name carries little topical content and
-   judgments citing it compete for the same slots. In the product a known case is found by the
-   party-name search, which matches title, petitioner and respondent in PostgreSQL metadata
-   rather than by embedding rank.
+5. **Title queries are limited by the extractor, not only by retrieval.** The `X v. Y` pattern
+   yields a party-style title for 79 of the 192 sampled judgments and a fragment or a
+   jurisdiction line (`civil`, `Pravin`, `IN THE SUPREME COURT OF INDIA ... I.A. No.`) for the
+   other 113. Splitting Query B on that criterion:
+
+   | Title extraction | n | Dense Hit@5 | Sparse Hit@5 | Hybrid Hit@5 |
+   |---|---|---|---|---|
+   | Party-style title parsed | 79 | 11.4% | 48.1% | **49.4%** |
+   | Fragment / jurisdiction line | 113 | 0.0% | 11.5% | 8.8% |
+
+   So the 25.5% title cell is a blend of a working case (49.4%) and a broken input (8.8%). The
+   court-and-year fallback in `hybrid_eval.py` never fired, because the sample builder only
+   accepts a judgment whose title parses.
+6. **The encoder window truncates 7.2% of chunks.** `all-mpnet-base-v2` accepts 384 word-piece
+   tokens; the chunker caps chunks at 280 words (`MAX_CHUNK_WORDS`), which is soft because a
+   single long sentence becomes one oversized chunk. On an unbiased random sample of 725
+   indexed chunks (`tablesample system (0.06)`), tokenised with the model's own tokenizer: mean
+   267, median 309, p95 396, p99 484, max 1,029, and 52 of 725 (7.2%) exceed 384. Those chunks
+   are embedded from their first ~290 words only; the sparse vector is not truncated. The
+   `sentence_aware` fallback strategy is the worst group (median 332, 15% over).
 
 ## Reproducing
 
@@ -145,6 +163,8 @@ Requires a running index (the Docker stack, with the corpus ingested) and the PD
 python scripts/hybrid/make_eval_sample.py      # rewrites the sample (same seed -> same 192)
 python scripts/hybrid/hybrid_eval.py           # accuracy + filter assertions -> hybrid_eval_report.json
 python scripts/hybrid/eval_latency.py          # latency percentiles -> latency_report.json
+python scripts/hybrid/analyze_eval_report.py   # recomputes every figure above from the hit log alone
+python scripts/hybrid/chunk_token_probe.py     # chunk lengths against the 384-token encoder window
 ```
 
 Every percentage above can also be recomputed from the committed

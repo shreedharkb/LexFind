@@ -250,7 +250,7 @@ Retrieval was measured on the running index (Qdrant collection `legal_corpus_hyb
 
 Fusion of the lexical list over the dense baseline was the decisive change. Averaged over the three query types, Hit@5 went from 18.4% dense-only to 58.7% hybrid — a 3.19× gain, and 232 more of the 576 questions answered inside the top five, with no overlap between the 95% Wilson intervals at any of the nine cells. Per type: excerpts 29.2% → **78.1%**, single sentences 21.4% → 72.4%, case titles 4.7% → 25.5%. Sparse-only on its own reaches 59.0% and ranks better at the head of the list (MRR 0.546 vs 0.446), which is where the citation for an answer is drawn from. Median warm latency is 100 ms for dense and hybrid against 8–13 ms for sparse, and 95th percentiles stay under 160 ms.
 
-The sampled judgment list, the per-query hit log, the latency report and the three scripts that produced them are committed, so every figure can be recomputed; only the 46k PDF corpus and a running index are needed to re-run the harness. Full numbers with confidence intervals are in **[docs/rag_metrics.md](docs/rag_metrics.md)**.
+The sampled judgment list, the per-query hit log, the latency report and the measurement scripts are committed, so every figure can be recomputed: `analyze_eval_report.py` reproduces all of them from the hit log alone, with no re-run. Only the 46k PDF corpus and a running index are needed to re-run the harness itself. Full numbers with confidence intervals are in **[docs/rag_metrics.md](docs/rag_metrics.md)**.
 
 ## Documentation
 
