@@ -44,8 +44,12 @@ sampling.
 * **Dense** -- vector search on the `all-mpnet-base-v2` named vector.
 * **Sparse** -- vector search on the `Qdrant/bm25` named sparse vector.
 * **Hybrid RRF** -- both, fused inside Qdrant by Reciprocal Rank Fusion with the
-  library's default constant, `k = 60` (neither `app/services/qdrant_search_service.py`
-  nor the harness overrides it).
+  library's constant `k = 1` (neither `app/services/qdrant_search_service.py`
+  nor the harness overrides it). Verified on the running collection rather than assumed:
+  fusing two *identical* prefetch lists returns 1.000, 0.667, 0.500, 0.400, 0.333 for
+  ranks 1-5, i.e. each list contributes `1 / (rank + 1)`. Qdrant's RRF therefore does not
+  use the `k = 60` of the original paper, and no earlier text in this repository or in the
+  report should be read as claiming it does.
 
 ## Results
 
