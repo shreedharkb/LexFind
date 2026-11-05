@@ -24,7 +24,9 @@ services:
 
   # ── Qdrant Vector DB ────────────────────────────────────
   qdrant:
-    image: qdrant/qdrant:v1.12.6
+    # The persisted volume was written by 1.18.x; older servers panic on load
+    # ("Can not create shard holder ... invalid type: sequence, expected a map").
+    image: qdrant/qdrant:v1.18.2
     container_name: lexfind_qdrant
     restart: always
     ports:
