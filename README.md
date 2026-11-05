@@ -226,6 +226,7 @@ Open `http://localhost:5173`.
 | `JWT_ALGORITHM` | Signing algorithm (default: HS256) |
 | `JWT_EXPIRATION_HOURS` | Token lifetime (default: 24) |
 | `QDRANT_HOST` / `QDRANT_PORT` | Qdrant endpoint (defaults: localhost / 6333) |
+| `QDRANT_URL` / `QDRANT_API_KEY` | Optional remote/Qdrant Cloud endpoint; when `QDRANT_URL` is set it takes precedence over host/port |
 | `QDRANT_COLLECTION` | Collection name (default: `legal_corpus_hybrid`) |
 | `QDRANT_QUERY_TIMEOUT_SECONDS` | Fuse timeout before falling back to dense-only (default: 12) |
 | `USE_LOCAL_FILES` | `true` keeps PDFs on local disk instead of Azure Blob Storage |
@@ -233,13 +234,15 @@ Open `http://localhost:5173`.
 | `AZURE_STORAGE_CONNECTION_STRING` | Optional, enables Azure Blob Storage |
 | `REDIS_URL` | Optional, enables Redis rate limiting |
 | `TAVILY_API_KEY` | Optional, enables web supplementation for recent-law questions |
-| `API_HOST` / `API_PORT` | Uvicorn bind address when run through the entrypoint |
+| `HOST` / `PORT` / `RELOAD` | Read by the `python -m app.main` entry point (defaults: 127.0.0.1 / 8000 / false); the Dockerfile CMD binds 0.0.0.0:8000 directly |
 
 ### Frontend (`frontend/.env`)
 
 | Variable | Description |
 |---|---|
 | `VITE_API_BASE_URL` | Backend URL (default: http://localhost:8000) |
+
+`VITE_API_BASE_URL` is also read server-side by [backend/app/api/cases.py](backend/app/api/cases.py) when it builds the PDF streaming URL, so set it in the backend environment too if the API is not served from the same origin as the client.
 
 ## RAG Metrics & Evaluation
 
